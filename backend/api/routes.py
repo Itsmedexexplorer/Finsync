@@ -474,7 +474,9 @@ def explain_case_query(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Case '{case_id}' not found in demo session store.",
         )
-    question = payload.get("question", "Why is human review required for this case?")
+    question = str(payload.get("question") or "Why is human review required for this case?").strip()
+    if len(question) > 500:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Questions can be at most 500 characters.")
     return controller_svc.explain_query(result, question)
 
 
@@ -521,7 +523,7 @@ def start_case_review(
             detail=f"Case '{case_id}' not found in demo session store.",
         )
     reviewer_id = payload.get("reviewer_id", "controller_1")
-    reviewer_name = payload.get("reviewer_name", "Finance Controller")
+    reviewer_name = str(payload.get("reviewer_name") or "Finance Controller")[:80]
     try:
         return review_svc.start_review(case_id, reviewer_id=reviewer_id, reviewer_name=reviewer_name)
     except (InvalidStateTransitionError, ValueError) as e:
@@ -547,11 +549,13 @@ def add_case_review_note(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Case '{case_id}' not found in demo session store.",
         )
-    content = payload.get("content", "").strip()
+    content = str(payload.get("content", "")).strip()
     if not content:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Note content cannot be empty.")
+    if len(content) > 2000:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Notes can be at most 2,000 characters.")
     reviewer_id = payload.get("reviewer_id", "controller_1")
-    reviewer_name = payload.get("reviewer_name", "Finance Controller")
+    reviewer_name = str(payload.get("reviewer_name") or "Finance Controller")[:80]
     try:
         return review_svc.add_note(case_id, reviewer_id=reviewer_id, reviewer_name=reviewer_name, content=content)
     except ReviewClosedError as e:
@@ -585,7 +589,7 @@ def mark_evidence_as_reviewed(
         valid_ev_ids = list(result.reconciliation.evidence_ids)
     payload = payload or {}
     reviewer_id = payload.get("reviewer_id", "controller_1")
-    reviewer_name = payload.get("reviewer_name", "Finance Controller")
+    reviewer_name = str(payload.get("reviewer_name") or "Finance Controller")[:80]
     notes = payload.get("notes")
     try:
         return review_svc.mark_evidence_reviewed(
@@ -707,7 +711,7 @@ def record_case_review_decision(
             case_id=case_id,
             decision=dec,
             reviewer_id=payload.get("reviewer_id", "controller_1"),
-            reviewer_name=payload.get("reviewer_name", "Finance Controller"),
+            reviewer_name=str(payload.get("reviewer_name") or "Finance Controller")[:80],
             notes=payload.get("notes"),
         )
     except (InvalidStateTransitionError, ReviewClosedError) as e:
@@ -743,7 +747,7 @@ def escalate_case_review(
             case_id=case_id,
             reason=reason,
             reviewer_id=payload.get("reviewer_id", "controller_1"),
-            reviewer_name=payload.get("reviewer_name", "Finance Controller"),
+            reviewer_name=str(payload.get("reviewer_name") or "Finance Controller")[:80],
         )
     except InvalidStateTransitionError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -774,7 +778,7 @@ def resolve_case_review(
         return review_svc.resolve(
             case_id=case_id,
             reviewer_id=payload.get("reviewer_id", "controller_1"),
-            reviewer_name=payload.get("reviewer_name", "Finance Controller"),
+            reviewer_name=str(payload.get("reviewer_name") or "Finance Controller")[:80],
             notes=payload.get("notes"),
         )
     except InvalidStateTransitionError as e:
@@ -806,7 +810,7 @@ def close_case_review(
         return review_svc.close(
             case_id=case_id,
             reviewer_id=payload.get("reviewer_id", "controller_1"),
-            reviewer_name=payload.get("reviewer_name", "Finance Controller"),
+            reviewer_name=str(payload.get("reviewer_name") or "Finance Controller")[:80],
             notes=payload.get("notes"),
         )
     except InvalidStateTransitionError as e:

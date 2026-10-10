@@ -106,6 +106,9 @@ const ICONS = {
   user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
   circle: '<circle cx="12" cy="12" r="10"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+  moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  monitor: '<rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',
 };
 
 // Older call sites use descriptive names; map them onto the icon set.
@@ -343,27 +346,59 @@ function needsAttention(c) {
 
 /* ---------------------------------------------------------
    Auth (Supabase)
+   The app only renders behind a valid Supabase session. If the
+   server says auth is required and anything is missing (config,
+   Supabase library, session) the user stays on a locked screen.
    --------------------------------------------------------- */
-async function initAuth() {
-  let cfg = {};
-  try { cfg = await (await fetch("/api/v1/config")).json(); } catch { /* local mode */ }
+const LIMITS = { nameMin: 2, nameMax: 50, emailMax: 254, pwMin: 8, pwMax: 72 };
+const RESEND_COOLDOWN_S = 60;
 
-  if (cfg.supabase_url && cfg.supabase_anon_key && window.supabase) {
-    state.authEnabled = true;
-    state.sb = window.supabase.createClient(cfg.supabase_url, cfg.supabase_anon_key, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
-    });
-    const { data } = await state.sb.auth.getSession();
-    setSession(data.session);
-    state.sb.auth.onAuthStateChange((event, session) => {
-      const wasSignedIn = !!state.user;
-      setSession(session);
-      if (event === "PASSWORD_RECOVERY") { location.hash = "#/account?reset=1"; }
-      if (!!state.user !== wasSignedIn) { invalidateChecks(); render(); }
-    });
-  } else {
-    state.user = { id: "local", email: null, name: "You" };
+async function initAuth() {
+  let cfg;
+  try {
+    const res = await fetch("/api/v1/config", { cache: "no-store" });
+    if (!res.ok) throw new Error();
+    cfg = await res.json();
+  } catch {
+    state.bootError = "Can't reach Verity right now. Check your connection and try again.";
+    return;
   }
+
+  if (!cfg.auth_required) {
+    // Local development without Supabase: single local workspace.
+    state.user = { id: "local", email: null, name: "You" };
+    return;
+  }
+
+  state.authEnabled = true;
+  if (!cfg.supabase_url || !cfg.supabase_anon_key || !window.supabase) {
+    state.bootError = "Sign-in is temporarily unavailable. Please try again in a few minutes.";
+    return;
+  }
+
+  state.sb = window.supabase.createClient(cfg.supabase_url, cfg.supabase_anon_key, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" },
+  });
+
+  // getUser() checks the token with Supabase instead of trusting local storage.
+  const { data: sessionData } = await state.sb.auth.getSession();
+  if (sessionData.session) {
+    const { data: userData, error } = await state.sb.auth.getUser();
+    setSession(error || !userData.user ? null : sessionData.session);
+    if (error) await state.sb.auth.signOut({ scope: "local" }).catch(() => {});
+  }
+
+  state.sb.auth.onAuthStateChange((event, session) => {
+    const wasSignedIn = !!state.user;
+    setSession(session);
+    if (event === "PASSWORD_RECOVERY") {
+      state.recovery = true;
+      render();
+      return;
+    }
+    if (event === "SIGNED_OUT") { state.recovery = false; caseCache.clear(); }
+    if (!!state.user !== wasSignedIn) { invalidateChecks(); render(); }
+  });
 }
 
 function setSession(session) {
@@ -379,21 +414,108 @@ function setSession(session) {
 async function signOut(silent = false) {
   if (state.sb) await state.sb.auth.signOut().catch(() => {});
   setSession(null);
+  state.recovery = false;
   invalidateChecks();
+  caseCache.clear();
   if (!silent) toast("You've been signed out.");
-  location.hash = "#/";
+  if (location.hash && location.hash !== "#/") location.hash = "#/";
   render();
 }
 
-function renderAuth(mode = "signin") {
-  const app = $("#app");
-  app.innerHTML = `
+function renderBootError() {
+  $("#app").innerHTML = `
+    <div class="auth-panel" style="min-height:100vh">
+      <div class="auth-card" style="text-align:center;justify-items:center">
+        <img src="assets/logo.svg" alt="" width="40" height="40">
+        <h2>Verity is unavailable</h2>
+        <p class="muted">${esc(state.bootError)}</p>
+        <button class="btn btn-primary" onclick="location.reload()">${icon("refresh")}Try again</button>
+      </div>
+    </div>`;
+}
+
+/* --- Validation --- */
+const EMAIL_RE = /^[A-Za-z0-9._%+-]{1,64}@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,24}$/;
+const NAME_RE = /^[\p{L}][\p{L}\p{M} .'-]*$/u;
+const DOMAIN_TYPOS = {
+  "gmial.com": "gmail.com", "gmai.com": "gmail.com", "gmal.com": "gmail.com", "gnail.com": "gmail.com",
+  "gamil.com": "gmail.com", "gmail.co": "gmail.com", "gmail.cm": "gmail.com", "gmail.con": "gmail.com", "gmaill.com": "gmail.com",
+  "yaho.com": "yahoo.com", "yahooo.com": "yahoo.com", "yahoo.co": "yahoo.com", "yhoo.com": "yahoo.com", "yahoo.con": "yahoo.com",
+  "hotmial.com": "hotmail.com", "hotmal.com": "hotmail.com", "hotmail.co": "hotmail.com",
+  "outlok.com": "outlook.com", "outllook.com": "outlook.com", "outlook.co": "outlook.com", "outlook.con": "outlook.com",
+  "rediffmail.co": "rediffmail.com", "icloud.co": "icloud.com",
+};
+
+function validateName(v) {
+  const name = v.trim().replace(/\s+/g, " ");
+  if (!name) return "Enter your name.";
+  if (name.length < LIMITS.nameMin) return `Name must be at least ${LIMITS.nameMin} letters.`;
+  if (name.length > LIMITS.nameMax) return `Name can be at most ${LIMITS.nameMax} characters.`;
+  if (!NAME_RE.test(name)) return "Use letters only (spaces, dots, apostrophes and hyphens are fine).";
+  return "";
+}
+
+function validateEmail(v) {
+  const email = v.trim();
+  if (!email) return "Enter your email address.";
+  if (email.length > LIMITS.emailMax) return `Email can be at most ${LIMITS.emailMax} characters.`;
+  if (!email.includes("@")) return "Email needs an @, like name@gmail.com.";
+  const domain = email.split("@")[1] || "";
+  if (!domain.includes(".")) return `Finish the address, like name@${domain || "gmail"}.com.`;
+  if (!EMAIL_RE.test(email) || email.includes("..")) return "That doesn't look like a complete email address, e.g. name@gmail.com.";
+  const fix = DOMAIN_TYPOS[domain.toLowerCase()];
+  if (fix) return `Did you mean ${email.split("@")[0]}@${fix}?`;
+  return "";
+}
+
+const PW_RULES = [
+  { id: "len", label: `${LIMITS.pwMin}–${LIMITS.pwMax} characters`, test: (p) => p.length >= LIMITS.pwMin && p.length <= LIMITS.pwMax },
+  { id: "upper", label: "An uppercase letter", test: (p) => /[A-Z]/.test(p) },
+  { id: "lower", label: "A lowercase letter", test: (p) => /[a-z]/.test(p) },
+  { id: "digit", label: "A number", test: (p) => /\d/.test(p) },
+  { id: "symbol", label: "A special character (!@#$…)", test: (p) => /[^A-Za-z0-9\s]/.test(p) },
+];
+function validatePassword(p) {
+  const failed = PW_RULES.filter((r) => !r.test(p));
+  return failed.length ? `Password needs: ${failed.map((r) => r.label.toLowerCase()).join(", ")}.` : "";
+}
+function pwChecklist(p) {
+  return PW_RULES.map((r) => {
+    const ok = r.test(p);
+    return `<li class="${ok ? "ok" : ""}">${icon(ok ? "checkCircle" : "circle")}${esc(r.label)}</li>`;
+  }).join("");
+}
+
+/* --- Sign-in attempt throttling (on top of Supabase's server-side limits) --- */
+const ATTEMPT_KEY = "verity.auth.attempts";
+function readAttempts() {
+  try { return JSON.parse(localStorage.getItem(ATTEMPT_KEY)) || { fails: 0, until: 0 }; }
+  catch { return { fails: 0, until: 0 }; }
+}
+function writeAttempts(a) { try { localStorage.setItem(ATTEMPT_KEY, JSON.stringify(a)); } catch { /* storage blocked */ } }
+function lockSecondsLeft() { return Math.max(0, Math.ceil((readAttempts().until - Date.now()) / 1000)); }
+function recordFailedSignIn() {
+  const a = readAttempts();
+  a.fails += 1;
+  // 5 free tries, then 30s, 60s, 120s … capped at 15 minutes.
+  if (a.fails >= 5) a.until = Date.now() + Math.min(900, 30 * 2 ** (a.fails - 5)) * 1000;
+  writeAttempts(a);
+}
+function clearFailedSignIns() { writeAttempts({ fails: 0, until: 0 }); }
+
+const cooldowns = {};
+function startCooldown(key, seconds) { cooldowns[key] = Date.now() + seconds * 1000; }
+function cooldownLeft(key) { return Math.max(0, Math.ceil(((cooldowns[key] || 0) - Date.now()) / 1000)); }
+
+/* --- Screens --- */
+function authShell(inner) {
+  return `
     <div class="auth">
       <section class="auth-hero">
         <a class="brand" href="#/"><img src="assets/logo.svg" alt=""><b>verity</b></a>
         <div>
           <h1>Know who has really paid you.</h1>
-          <p class="lead">Upload your bank statement with invoices, payment screenshots and WhatsApp messages. Verity matches every claim to your bank — in seconds.</p>
+          <p class="lead">Upload your bank statement with invoices, payment screenshots and WhatsApp messages. Verity matches every claim to your bank in seconds.</p>
           <div class="auth-sample" aria-hidden="true">
             <div class="as-msg"><b>Vikram</b><span>maine 15000 google pay kar diye hain</span></div>
             <div class="as-line"><span>ICICI statement, UPI 419082390192</span><span>+₹12,000</span></div>
@@ -402,106 +524,285 @@ function renderAuth(mode = "signin") {
         </div>
         <p class="fine">For freelancers, agencies and small businesses in India.</p>
       </section>
-
       <section class="auth-panel">
         <div class="auth-card">
-          <a class="brand hide-desktop" href="#/"><img src="assets/logo.svg" alt=""><b>verity</b></a>
-          <div>
-            <h2 id="auth-title"></h2>
+          <div class="auth-top">
+            <a class="brand hide-desktop" href="#/"><img src="assets/logo.svg" alt=""><b>verity</b></a>
+            ${themeToggleHtml()}
           </div>
-          <p class="sub" id="auth-sub"></p>
-          <div class="seg" role="tablist">
-            <button role="tab" data-mode="signin">Sign in</button>
-            <button role="tab" data-mode="signup">Create account</button>
-          </div>
-          <form id="auth-form" class="stack" novalidate>
-            <div class="field" id="name-field">
-              <label for="auth-name">Your name</label>
-              <input class="input" id="auth-name" autocomplete="name" placeholder="e.g. Priya Sharma">
-            </div>
-            <div class="field">
-              <label for="auth-email">Email</label>
-              <input class="input" id="auth-email" type="email" autocomplete="email" placeholder="you@company.com" required>
-            </div>
-            <div class="field" id="pw-field">
-              <label for="auth-pw">Password</label>
-              <input class="input" id="auth-pw" type="password" minlength="6" placeholder="At least 6 characters" required>
-            </div>
-            <div id="auth-msg" hidden></div>
-            <button class="btn btn-primary btn-lg btn-block" id="auth-submit" type="submit"></button>
-            <button class="link-btn" type="button" id="auth-forgot">Forgot your password?</button>
-          </form>
+          ${inner}
         </div>
       </section>
     </div>`;
+}
+
+function fieldHtml({ id, label, type = "text", max, auto, placeholder, hint = "" }) {
+  return `
+    <div class="field" id="${id}-field">
+      <label for="${id}">${label}</label>
+      <div class="input-wrap">
+        <input class="input" id="${id}" type="${type}" maxlength="${max}" autocomplete="${auto}" placeholder="${esc(placeholder)}" spellcheck="false" autocapitalize="${type === "email" ? "none" : "words"}">
+        ${type === "password" ? `<button type="button" class="reveal" data-reveal="${id}" aria-label="Show password">${icon("eye")}</button>` : ""}
+      </div>
+      <p class="field-error" id="${id}-error" role="alert" hidden></p>
+      ${hint}
+    </div>`;
+}
+
+function setFieldError(id, msg) {
+  const el = $(`#${id}-error`);
+  const input = $(`#${id}`);
+  if (!el || !input) return;
+  el.textContent = msg || "";
+  el.hidden = !msg;
+  input.setAttribute("aria-invalid", msg ? "true" : "false");
+}
+
+function wireReveal(root) {
+  $$("[data-reveal]", root).forEach((b) => b.addEventListener("click", () => {
+    const input = $(`#${b.dataset.reveal}`);
+    const show = input.type === "password";
+    input.type = show ? "text" : "password";
+    b.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    b.classList.toggle("on", show);
+  }));
+}
+
+function renderAuth(mode = "signin") {
+  const app = $("#app");
+  app.innerHTML = authShell(`
+    <div>
+      <h2 id="auth-title"></h2>
+      <p class="sub" id="auth-sub"></p>
+    </div>
+    <div class="seg" role="tablist" id="auth-seg">
+      <button role="tab" type="button" data-mode="signin">Sign in</button>
+      <button role="tab" type="button" data-mode="signup">Create account</button>
+    </div>
+    <form id="auth-form" class="stack" novalidate>
+      ${fieldHtml({ id: "auth-name", label: "Your name", max: LIMITS.nameMax, auto: "name", placeholder: "e.g. Priya Sharma" })}
+      ${fieldHtml({ id: "auth-email", label: "Email", type: "email", max: LIMITS.emailMax, auto: "email", placeholder: "name@gmail.com" })}
+      ${fieldHtml({ id: "auth-pw", label: "Password", type: "password", max: LIMITS.pwMax, auto: "current-password", placeholder: "Your password",
+        hint: `<ul class="pw-rules" id="pw-rules" hidden></ul>` })}
+      <div id="auth-msg" hidden></div>
+      <button class="btn btn-primary btn-lg btn-block" id="auth-submit" type="submit"></button>
+      <button class="link-btn" type="button" id="auth-forgot"></button>
+    </form>`);
 
   let current = mode;
+  let pendingEmail = "";
   const setMode = (m) => {
     current = m;
-    $$(".seg button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === m)));
-    $("#auth-title").textContent = m === "signup" ? "Create your account" : m === "reset" ? "Reset your password" : "Welcome back";
-    $("#auth-sub").textContent = m === "signup" ? "Free to start. Your workspace begins empty." : m === "reset" ? "We'll email you a link to set a new password." : "Sign in to see your payment checks.";
-    $("#name-field").hidden = m !== "signup";
-    $("#pw-field").hidden = m === "reset";
+    $$("#auth-seg button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === m)));
+    $("#auth-seg").hidden = m === "reset";
+    $("#auth-title").textContent = { signin: "Welcome back", signup: "Create your account", reset: "Reset your password" }[m];
+    $("#auth-sub").textContent = {
+      signin: "Sign in to see your payment checks.",
+      signup: "Your workspace starts empty and is private to you.",
+      reset: "Enter your account email and we'll send you a link to set a new password.",
+    }[m];
+    $("#auth-name-field").hidden = m !== "signup";
+    $("#auth-pw-field").hidden = m === "reset";
     $("#auth-pw").autocomplete = m === "signup" ? "new-password" : "current-password";
-    $("#auth-submit").textContent = m === "signup" ? "Create account" : m === "reset" ? "Send reset link" : "Sign in";
+    $("#auth-pw").placeholder = m === "signup" ? "Create a strong password" : "Your password";
+    $("#pw-rules").hidden = m !== "signup";
+    $("#pw-rules").innerHTML = pwChecklist($("#auth-pw").value);
     $("#auth-forgot").textContent = m === "reset" ? "Back to sign in" : "Forgot your password?";
     $("#auth-msg").hidden = true;
+    ["auth-name", "auth-email", "auth-pw"].forEach((id) => setFieldError(id, ""));
+    updateSubmit();
   };
-  setMode(mode);
 
-  $$(".seg button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+  const updateSubmit = () => {
+    const btn = $("#auth-submit");
+    const lock = current === "signin" ? lockSecondsLeft() : 0;
+    const cool = current === "reset" ? cooldownLeft(`reset:${$("#auth-email").value.trim().toLowerCase()}`) : 0;
+    btn.disabled = !!(lock || cool) || btn.dataset.busy === "1";
+    btn.textContent = lock ? `Too many attempts. Try again in ${lock}s`
+      : cool ? `Link sent. Resend in ${cool}s`
+      : { signin: "Sign in", signup: "Create account", reset: "Send reset link" }[current];
+  };
+  const ticker = setInterval(() => {
+    if (!document.body.contains($("#auth-submit"))) return clearInterval(ticker);
+    updateSubmit();
+    const resend = $("#resend-btn");
+    if (resend) {
+      const left = cooldownLeft(`signup:${pendingEmail}`);
+      resend.disabled = left > 0;
+      resend.textContent = left ? `Resend email in ${left}s` : "Resend confirmation email";
+    }
+  }, 1000);
+
+  setMode(mode);
+  wireReveal(app);
+  $$("#auth-seg button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
   $("#auth-forgot").addEventListener("click", () => setMode(current === "reset" ? "signin" : "reset"));
 
-  const showMsg = (text, ok = false) => {
+  // Validate on blur, re-validate live once a field has shown an error.
+  const validators = { "auth-name": validateName, "auth-email": validateEmail, "auth-pw": (v) => (current === "signup" ? validatePassword(v) : v ? "" : "Enter your password.") };
+  Object.entries(validators).forEach(([id, fn]) => {
+    const input = $(`#${id}`);
+    input.addEventListener("blur", () => { if (input.value) setFieldError(id, fn(input.value)); });
+    input.addEventListener("input", () => {
+      if (input.getAttribute("aria-invalid") === "true") setFieldError(id, fn(input.value));
+      if (id === "auth-pw") $("#pw-rules").innerHTML = pwChecklist(input.value);
+      if (id === "auth-email") updateSubmit();
+    });
+  });
+
+  const showMsg = (html, ok = false) => {
     const el = $("#auth-msg");
     el.className = ok ? "form-ok" : "form-error";
-    el.textContent = text;
+    el.innerHTML = html;
     el.hidden = false;
   };
 
   $("#auth-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const email = $("#auth-email").value.trim();
+    $("#auth-msg").hidden = true;
+    const name = $("#auth-name").value.trim().replace(/\s+/g, " ");
+    const email = $("#auth-email").value.trim().toLowerCase();
     const password = $("#auth-pw").value;
-    const name = $("#auth-name").value.trim();
-    if (!/^\S+@\S+\.\S+$/.test(email)) return showMsg("Please enter a valid email address.");
-    if (current !== "reset" && password.length < 6) return showMsg("Password must be at least 6 characters.");
+
+    const errors = {
+      "auth-email": validateEmail(email),
+      "auth-name": current === "signup" ? validateName(name) : "",
+      "auth-pw": current === "reset" ? "" : validators["auth-pw"](password),
+    };
+    Object.entries(errors).forEach(([id, msg]) => setFieldError(id, msg));
+    const firstBad = Object.keys(errors).find((k) => errors[k]);
+    if (firstBad) { $(`#${firstBad}`).focus(); return; }
+    if (current === "signin" && lockSecondsLeft()) return updateSubmit();
 
     const btn = $("#auth-submit");
-    btn.disabled = true;
+    btn.dataset.busy = "1";
+    updateSubmit();
     try {
       if (current === "signin") {
         const { error } = await state.sb.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          if (!/email not confirmed/i.test(error.message)) recordFailedSignIn();
+          throw error;
+        }
+        clearFailedSignIns();
       } else if (current === "signup") {
         const { data, error } = await state.sb.auth.signUp({
           email, password,
-          options: { data: { full_name: name || undefined }, emailRedirectTo: location.origin },
+          options: { data: { full_name: name }, emailRedirectTo: location.origin },
         });
         if (error) throw error;
-        if (!data.session) showMsg("Almost there! We sent a confirmation link to your email. Open it, then sign in.", true);
+        if (!data.session) {
+          pendingEmail = email;
+          startCooldown(`signup:${email}`, RESEND_COOLDOWN_S);
+          showMsg(`<b>Check your inbox.</b> We sent a confirmation link to ${esc(email)}. Open it, then sign in.<div class="mt-12"><button type="button" class="btn btn-secondary btn-sm" id="resend-btn" disabled>Resend email in ${RESEND_COOLDOWN_S}s</button></div>`, true);
+          $("#resend-btn").addEventListener("click", async () => {
+            startCooldown(`signup:${email}`, RESEND_COOLDOWN_S);
+            const { error: rErr } = await state.sb.auth.resend({ type: "signup", email, options: { emailRedirectTo: location.origin } });
+            toast(rErr ? friendlyAuthError(rErr) : "Confirmation email sent again.", rErr ? "error" : "success");
+          });
+        }
       } else {
+        startCooldown(`reset:${email}`, RESEND_COOLDOWN_S);
         const { error } = await state.sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin });
-        if (error) throw error;
-        showMsg("If that email has an account, a reset link is on its way.", true);
+        if (error && !/rate limit/i.test(error.message)) throw error;
+        // Same message whether or not the account exists, so emails can't be probed.
+        showMsg(`<b>Check your email.</b> If an account exists for ${esc(email)}, a password reset link is on its way. It expires in 1 hour.`, true);
       }
     } catch (err) {
-      showMsg(friendlyAuthError(err));
+      showMsg(esc(friendlyAuthError(err)));
     } finally {
-      btn.disabled = false;
+      btn.dataset.busy = "";
+      updateSubmit();
     }
+  });
+}
+
+/* Shown after the user opens the reset link from their email. */
+function renderNewPassword() {
+  const app = $("#app");
+  app.innerHTML = authShell(`
+    <div>
+      <h2>Set a new password</h2>
+      <p class="sub">Choose a new password for ${esc(state.user?.email || "your account")}.</p>
+    </div>
+    <form id="np-form" class="stack" novalidate>
+      ${fieldHtml({ id: "np-pw", label: "New password", type: "password", max: LIMITS.pwMax, auto: "new-password", placeholder: "Create a strong password", hint: `<ul class="pw-rules" id="np-rules">${pwChecklist("")}</ul>` })}
+      ${fieldHtml({ id: "np-pw2", label: "Confirm new password", type: "password", max: LIMITS.pwMax, auto: "new-password", placeholder: "Type it again" })}
+      <div id="np-msg" hidden></div>
+      <button class="btn btn-primary btn-lg btn-block" id="np-submit" type="submit">Save new password</button>
+    </form>`);
+  wireReveal(app);
+  $("#np-pw").addEventListener("input", (e) => { $("#np-rules").innerHTML = pwChecklist(e.target.value); });
+  $("#np-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const pw = $("#np-pw").value;
+    const pw2 = $("#np-pw2").value;
+    setFieldError("np-pw", validatePassword(pw));
+    setFieldError("np-pw2", pw && pw !== pw2 ? "Passwords don't match." : "");
+    if (validatePassword(pw) || pw !== pw2) return;
+    const btn = $("#np-submit");
+    btn.disabled = true;
+    const { error } = await state.sb.auth.updateUser({ password: pw });
+    btn.disabled = false;
+    if (error) {
+      const el = $("#np-msg");
+      el.className = "form-error";
+      el.textContent = friendlyAuthError(error);
+      el.hidden = false;
+      return;
+    }
+    state.recovery = false;
+    clearFailedSignIns();
+    toast("Password updated. You're signed in.", "success");
+    history.replaceState(null, "", location.pathname + "#/");
+    render();
   });
 }
 
 function friendlyAuthError(err) {
   const m = String(err?.message || err || "");
-  if (/invalid login/i.test(m)) return "That email and password don't match. Try again or reset your password.";
-  if (/email not confirmed/i.test(m)) return "Please confirm your email first — check your inbox for the link.";
-  if (/already registered/i.test(m)) return "An account with this email already exists. Sign in instead.";
-  if (/rate limit/i.test(m)) return "Too many attempts. Please wait a minute and try again.";
+  if (/invalid login/i.test(m)) {
+    const a = readAttempts();
+    const left = Math.max(0, 5 - a.fails);
+    return left ? `Email or password is incorrect. ${left} attempt${left === 1 ? "" : "s"} left before a short lockout.` : "Too many wrong attempts. Please wait before trying again, or reset your password.";
+  }
+  if (/email not confirmed/i.test(m)) return "Please confirm your email first. Check your inbox for the link.";
+  if (/already registered|already been registered/i.test(m)) return "An account with this email already exists. Sign in instead.";
+  if (/rate limit|too many|over_email_send_rate_limit/i.test(m)) return "Too many attempts. Please wait a minute and try again.";
+  if (/weak|password should|password is known/i.test(m)) return "That password is too weak or too common. Try a longer one with a mix of characters.";
+  if (/same.*password|should be different/i.test(m)) return "Your new password must be different from the old one.";
+  if (/database error/i.test(m)) return "Please check your name and email and try again.";
   return m || "Something went wrong. Please try again.";
 }
+
+/* ---------------------------------------------------------
+   Theme (light / dark / system)
+   --------------------------------------------------------- */
+const THEME_KEY = "verity.theme";
+function getThemePref() { try { return localStorage.getItem(THEME_KEY) || "system"; } catch { return "system"; } }
+function applyTheme(pref) {
+  const root = document.documentElement;
+  if (pref === "light" || pref === "dark") root.setAttribute("data-theme", pref);
+  else root.removeAttribute("data-theme");
+  const dark = pref === "dark" || (pref === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+  $('meta[name="theme-color"]')?.setAttribute("content", dark ? "#0E0E10" : "#FAFAFA");
+  $$("[data-theme-set]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.themeSet === pref)));
+}
+function setThemePref(pref) {
+  try { localStorage.setItem(THEME_KEY, pref); } catch { /* storage blocked */ }
+  applyTheme(pref);
+}
+function themeToggleHtml() {
+  const opts = [["light", "sun", "Light"], ["dark", "moon", "Dark"], ["system", "monitor", "System"]];
+  const pref = getThemePref();
+  return `<div class="theme-toggle" role="group" aria-label="Theme">${opts.map(([v, ic, label]) =>
+    `<button type="button" data-theme-set="${v}" aria-pressed="${pref === v}" title="${label}" aria-label="${label} theme">${icon(ic)}</button>`).join("")}</div>`;
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-theme-set]");
+  if (b) setThemePref(b.dataset.themeSet);
+});
+matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", () => applyTheme(getThemePref()));
 
 /* ---------------------------------------------------------
    Shell
@@ -528,6 +829,7 @@ function renderShell() {
             </a>`).join("")}
         </nav>
         <div class="sidebar-foot">
+          ${themeToggleHtml()}
           <a class="account-chip" href="#/account" data-nav="account" data-tour="account">
             <span class="avatar">${esc(initials(u.name))}</span>
             <span class="meta"><b>${esc(u.name)}</b><small>${esc(u.email || "Local workspace")}</small></span>
@@ -577,11 +879,14 @@ async function render() {
   $("#boot").hidden = true;
   $("#app").hidden = false;
 
-  if (state.authEnabled && !state.user) {
+  if (state.bootError) { stopTour(); renderBootError(); return; }
+  if (!state.user) {
+    // Fail closed: without a verified session nothing but the sign-in screen renders.
     stopTour();
-    renderAuth();
+    if (!$(".auth") || $(".shell")) renderAuth();
     return;
   }
+  if (state.recovery) { stopTour(); renderNewPassword(); return; }
   if (!$(".shell")) renderShell();
 
   const { parts, query } = parseHash();
@@ -1605,7 +1910,6 @@ function viewHelp(view) {
    --------------------------------------------------------- */
 function viewAccount(view, query) {
   const u = state.user;
-  const reset = query.get("reset") === "1";
   view.innerHTML = `
     <div class="page">
       <div class="page-head"><div><h1>Account</h1><p>Your profile and preferences.</p></div></div>
@@ -1618,11 +1922,19 @@ function viewAccount(view, query) {
           </div>
         </section>
 
+        <section class="card card-pad">
+          <div class="card-head" style="margin:0;align-items:center">
+            <div><h2>Appearance</h2><p class="sub">Light, dark, or match your device.</p></div>
+            ${themeToggleHtml()}
+          </div>
+        </section>
+
         ${state.authEnabled ? `
         <section class="card card-pad" id="pw-card">
-          <h2>${reset ? "Set a new password" : "Change password"}</h2>
-          <form id="pw-form" class="stack mt-16" style="max-width:420px">
-            <div class="field"><label for="new-pw">New password</label><input class="input" id="new-pw" type="password" minlength="6" autocomplete="new-password" placeholder="At least 6 characters"></div>
+          <h2>Change password</h2>
+          <p class="sub">After changing it, we'll email you a confirmation.</p>
+          <form id="pw-form" class="stack mt-16" style="max-width:420px" novalidate>
+            ${fieldHtml({ id: "new-pw", label: "New password", type: "password", max: LIMITS.pwMax, auto: "new-password", placeholder: "Create a strong password", hint: `<ul class="pw-rules" id="acc-rules">${pwChecklist("")}</ul>` })}
             <div><button class="btn btn-primary">Update password</button></div>
           </form>
         </section>` : ""}
@@ -1640,16 +1952,23 @@ function viewAccount(view, query) {
 
   $("#acc-tour").addEventListener("click", () => { location.hash = "#/"; setTimeout(() => startTour("main", true), 300); });
   $("#acc-signout")?.addEventListener("click", () => signOut());
+  wireReveal(view);
+  $("#new-pw")?.addEventListener("input", (e) => { $("#acc-rules").innerHTML = pwChecklist(e.target.value); });
   $("#pw-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const pw = $("#new-pw").value;
-    if (pw.length < 6) return toast("Password must be at least 6 characters.", "error");
+    const problem = validatePassword(pw);
+    setFieldError("new-pw", problem);
+    if (problem) return;
     const { error } = await state.sb.auth.updateUser({ password: pw });
-    if (error) return toast(friendlyAuthError(error), "error");
+    if (error) {
+      const msg = /reauth|recent/i.test(error.message) ? "For your security, sign out and sign in again before changing your password." : friendlyAuthError(error);
+      return toast(msg, "error");
+    }
     $("#new-pw").value = "";
+    $("#acc-rules").innerHTML = pwChecklist("");
     toast("Password updated.", "success");
   });
-  if (reset) $("#new-pw")?.focus();
 }
 
 /* ---------------------------------------------------------
@@ -1794,6 +2113,7 @@ function stopTour() {
 window.addEventListener("hashchange", () => { stopTour(); render().then(() => $("#view")?.focus({ preventScroll: true })); window.scrollTo(0, 0); });
 
 (async function boot() {
+  applyTheme(getThemePref());
   await initAuth();
   render();
 })();

@@ -54,7 +54,7 @@ Each check also shows **expected vs. received vs. still due**, a list of **what 
 | **How it works** | Status meanings, file types, FAQ, replay the tour |
 | **Account** | Profile, change password, sign out |
 
-The app is responsive: it has a bottom tab bar on phones and a sidebar on larger screens.
+The app is responsive: it has a bottom tab bar on phones and a sidebar on larger screens. It has a light and a dark theme; by default it follows your device setting, and you can switch it from the sidebar or *Account*.
 
 ## How it works under the hood
 
@@ -100,6 +100,24 @@ Main code locations:
 | `backend/review`, `backend/controller` | Review workflow, next-step suggestions, follow-up drafts and journal entries |
 | `docs/` | Technical notes for each subsystem |
 | `tests/` | 400+ automated tests |
+
+## Security
+
+- **The app stays locked without a login.** The web app only renders after Supabase confirms a valid session (`getUser()` checks the token with Supabase rather than trusting what's in the browser). If the config or the Supabase library can't load, the app shows an error instead of opening. Every `/api/` call needs a valid token, otherwise it gets `401`. A production server without Supabase configured refuses API calls (`503`) instead of running unprotected.
+- **Sign-up rules**, enforced in the browser *and* by Supabase:
+  - name: 2–50 characters, letters only (spaces, dots, apostrophes, hyphens allowed)
+  - email: a complete address, at most 254 characters, with hints for typos like `gmial.com`
+  - password: 8–72 characters with an uppercase letter, a lowercase letter, a number and a special character
+  - Name and email length are also checked by a database trigger (`supabase/migrations/`).
+- **Rate limits**
+  - Browser: 5 wrong passwords, then a lockout of 30s that doubles each time, up to 15 minutes.
+  - Supabase: 20 sign-in/sign-up attempts per 5 minutes per IP, and 60 seconds between confirmation or reset emails.
+  - API, per IP: 240 requests a minute, and 30 a minute without a valid token.
+  - API, per user: 180 requests a minute, 10 checks a minute (60 an hour), 20 "Ask" questions a minute.
+  - Over the limit you get `429` with a `Retry-After` header.
+  - Notes are capped at 2,000 characters and questions at 500.
+- **Forgot password**: Supabase emails a reset link. It opens a "Set a new password" screen with the same password rules, and Supabase emails a notice when the password changes. The reply looks the same whether or not the email has an account, so nobody can use it to find out which emails are registered.
+- **Supabase settings** live in `supabase/config.toml` and are applied with `supabase config push`. Branded email templates are in `supabase/templates/`. On the free plan they need a custom SMTP provider (for example Resend or SendGrid) before Supabase will use them, and that also raises Supabase's default limit of a few emails per hour.
 
 ## Run it locally
 

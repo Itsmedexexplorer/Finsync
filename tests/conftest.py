@@ -87,3 +87,12 @@ def sample_transaction() -> Transaction:
 def benchmark_cases() -> List[BenchmarkCase]:
     """Fixture loading all 96 ground-truth benchmark cases once per test session."""
     return load_benchmark_cases()
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limits():
+    """Each test starts with fresh rate-limit counters."""
+    from backend.api.rate_limit import limiter
+
+    limiter.reset()
+    yield
