@@ -1,0 +1,313 @@
+"""Generate Day 6 Cross-Modal Deduplication sample fixtures and cases."""
+
+import json
+from pathlib import Path
+
+
+def create_day6_samples() -> None:
+    samples_dir = Path("data/samples/day6")
+    samples_dir.mkdir(parents=True, exist_ok=True)
+
+    test_cases = [
+        {
+            "case_id": "DAY6-01-CONTENT-DUPLICATE",
+            "description": "Identical screenshot content uploaded twice (same SHA-256) -> DUPLICATE_EVIDENCE_CONTENT",
+            "evidence_items": [
+                {
+                    "id": "EVID-01A",
+                    "modality": "PAYMENT_SCREENSHOT",
+                    "source_type": "MANUAL_UPLOAD",
+                    "source_name": "gpay_receipt.png",
+                    "raw_payload": "GPAY_PAYMENT_SCREENSHOT_RAW_BYTES_SAMPLE_01",
+                    "content_hash": "sha256_mock_hash_screenshot_01",
+                },
+                {
+                    "id": "EVID-01B",
+                    "modality": "PAYMENT_SCREENSHOT",
+                    "source_type": "MANUAL_UPLOAD",
+                    "source_name": "gpay_receipt_copy.png",
+                    "raw_payload": "GPAY_PAYMENT_SCREENSHOT_RAW_BYTES_SAMPLE_01",
+                    "content_hash": "sha256_mock_hash_screenshot_01",
+                },
+            ],
+            "claims": [],
+            "transactions": [],
+            "expected_status": "DUPLICATE_EVIDENCE_CONTENT",
+            "expected_group_count": 1,
+        },
+        {
+            "case_id": "DAY6-02-BANK-AND-SCREENSHOT-SAME-UTR",
+            "description": "Bank statement credit + GPay screenshot sharing exact UTR 408219381920 -> SAME_EVENT",
+            "evidence_items": [
+                {
+                    "id": "EVID-02-BANK",
+                    "modality": "BANK_STATEMENT",
+                    "source_type": "BANK_CSV",
+                    "source_name": "statement.csv:Row2",
+                    "raw_payload": "15/08/2026,UPI/408219381920/PAYTO/RAHUL,35000.00,0.00,100000.00",
+                },
+                {
+                    "id": "EVID-02-SCREENSHOT",
+                    "modality": "PAYMENT_SCREENSHOT",
+                    "source_type": "MANUAL_UPLOAD",
+                    "source_name": "gpay_screenshot.png",
+                    "raw_payload": "Payment of Rs 35,000 to Rahul successful. UPI Ref 408219381920",
+                },
+            ],
+            "claims": [
+                {
+                    "id": "CLM-02-BANK",
+                    "evidence_id": "EVID-02-BANK",
+                    "claim_type": "PAYMENT_RECEIVED",
+                    "claimed_amount": 35000.0,
+                    "reference_id_hint": "408219381920",
+                },
+                {
+                    "id": "CLM-02-SS",
+                    "evidence_id": "EVID-02-SCREENSHOT",
+                    "claim_type": "PAYMENT_SENT",
+                    "claimed_amount": 35000.0,
+                    "reference_id_hint": "408219381920",
+                },
+            ],
+            "transactions": [{
+                "id": "TXN-02",
+                "amount": 35000.0,
+                "direction": "CREDIT",
+                "payment_method": "UPI",
+                "bank_reference": "408219381920",
+                "evidence_ids": ["EVID-02-BANK"],
+            }],
+            "expected_status": "SAME_EVENT",
+            "expected_group_count": 1,
+        },
+        {
+            "case_id": "DAY6-03-BANK-AND-WHATSAPP-SAME-ENTITY-AMOUNT-DATE",
+            "description": "Bank statement credit + WhatsApp message without UTR but same entity, amount, date -> SAME_EVENT",
+            "evidence_items": [
+                {
+                    "id": "EVID-03-BANK",
+                    "modality": "BANK_STATEMENT",
+                    "source_type": "BANK_CSV",
+                    "source_name": "stmt.csv:Row5",
+                    "raw_payload": "10/08/2026,UPI/PAYTO/RAHUL,20000.00,0.00,80000.00",
+                },
+                {
+                    "id": "EVID-03-CHAT",
+                    "modality": "MESSAGING_CHAT",
+                    "source_type": "WHATSAPP_EXPORT",
+                    "source_name": "chat.txt",
+                    "raw_payload": "Bhai 20k GPay kar diya check kar lo",
+                },
+            ],
+            "claims": [{
+                "id": "CLM-03-CHAT",
+                "evidence_id": "EVID-03-CHAT",
+                "claim_type": "PAYMENT_SENT",
+                "claimed_amount": 20000.0,
+                "claimed_date": "2026-08-10",
+                "counterparty_hint": "Rahul Kumar",
+            }],
+            "transactions": [{
+                "id": "TXN-03",
+                "amount": 20000.0,
+                "direction": "CREDIT",
+                "origin_entity_id": "ENT-001",
+                "timestamp": "2026-08-10T10:00:00Z",
+                "evidence_ids": ["EVID-03-BANK"],
+            }],
+            "claim_entity_map": {"CLM-03-CHAT": "ENT-001"},
+            "expected_status": "SAME_EVENT",
+            "expected_group_count": 1,
+        },
+        {
+            "case_id": "DAY6-04-DISTINCT-EVENTS-DIFFERENT-ENTITIES",
+            "description": "Bank statement credit for Rahul Kumar vs Screenshot for Rohit Sharma -> DISTINCT_EVENT (Zero False Merge)",
+            "evidence_items": [
+                {
+                    "id": "EVID-04-BANK",
+                    "modality": "BANK_STATEMENT",
+                    "source_type": "BANK_CSV",
+                    "source_name": "stmt.csv:Row8",
+                    "raw_payload": "12/08/2026,UPI/RAHUL,20000.00,0.00,60000.00",
+                },
+                {
+                    "id": "EVID-04-SS",
+                    "modality": "PAYMENT_SCREENSHOT",
+                    "source_type": "MANUAL_UPLOAD",
+                    "source_name": "rohit_payment.png",
+                    "raw_payload": "Paid 20000 to Rohit Sharma on 12 Aug",
+                },
+            ],
+            "claims": [{
+                "id": "CLM-04-SS",
+                "evidence_id": "EVID-04-SS",
+                "claim_type": "PAYMENT_SENT",
+                "claimed_amount": 20000.0,
+                "claimed_date": "2026-08-12",
+                "counterparty_hint": "Rohit Sharma",
+            }],
+            "transactions": [{
+                "id": "TXN-04",
+                "amount": 20000.0,
+                "direction": "CREDIT",
+                "origin_entity_id": "ENT-RAHUL",
+                "timestamp": "2026-08-12T10:00:00Z",
+                "evidence_ids": ["EVID-04-BANK"],
+            }],
+            "claim_entity_map": {"CLM-04-SS": "ENT-ROHIT"},
+            "expected_status": "DISTINCT_EVENT",
+            "expected_group_count": 2,
+        },
+        {
+            "case_id": "DAY6-05-CONFLICTING-UTRS-PRESERVED",
+            "description": "Same entity/amount/date but conflicting UTRs -> POSSIBLE_DUPLICATE (Preserves conflict for Day 7)",
+            "evidence_items": [
+                {
+                    "id": "EVID-05-BANK",
+                    "modality": "BANK_STATEMENT",
+                    "source_type": "BANK_CSV",
+                    "source_name": "stmt.csv",
+                    "raw_payload": "15/08/2026,UPI/408219381920/PAYTO/RAHUL,20000.00",
+                },
+                {
+                    "id": "EVID-05-SS",
+                    "modality": "PAYMENT_SCREENSHOT",
+                    "source_type": "MANUAL_UPLOAD",
+                    "source_name": "screenshot.png",
+                    "raw_payload": "Payment of Rs 20,000. UPI Ref 999888777666",
+                },
+            ],
+            "claims": [{
+                "id": "CLM-05-SS",
+                "evidence_id": "EVID-05-SS",
+                "claim_type": "PAYMENT_SENT",
+                "claimed_amount": 20000.0,
+                "claimed_date": "2026-08-15",
+                "reference_id_hint": "999888777666",
+                "counterparty_hint": "Rahul Kumar",
+            }],
+            "transactions": [{
+                "id": "TXN-05",
+                "amount": 20000.0,
+                "direction": "CREDIT",
+                "bank_reference": "408219381920",
+                "origin_entity_id": "ENT-RAHUL",
+                "timestamp": "2026-08-15T10:00:00Z",
+                "evidence_ids": ["EVID-05-BANK"],
+            }],
+            "claim_entity_map": {"CLM-05-SS": "ENT-RAHUL"},
+            "expected_status": "DISTINCT_EVENT",
+            "expected_group_count": 2,
+        },
+        {
+            "case_id": "DAY6-06-INVOICE-AND-PAYMENT-MULTIMODAL-GROUP",
+            "description": "Invoice + Payment Screenshot + Bank Statement grouped via Day 5 MatchRelationship -> 1 Event Group",
+            "evidence_items": [
+                {
+                    "id": "EVID-06-INV",
+                    "modality": "INVOICE",
+                    "source_type": "ZOHO_INVOICE",
+                    "source_name": "INV-2026-088.pdf",
+                    "raw_payload": "TAX INVOICE #INV-2026-088 | Total Due: Rs. 35,000.00",
+                },
+                {
+                    "id": "EVID-06-BANK",
+                    "modality": "BANK_STATEMENT",
+                    "source_type": "BANK_CSV",
+                    "source_name": "statement.csv",
+                    "raw_payload": "15/08/2026,UPI/408219381920/PAYTO/RAHUL,35000.00",
+                },
+                {
+                    "id": "EVID-06-SS",
+                    "modality": "PAYMENT_SCREENSHOT",
+                    "source_type": "MANUAL_UPLOAD",
+                    "source_name": "gpay.png",
+                    "raw_payload": "Paid Rs 35,000 ref 408219381920",
+                },
+            ],
+            "claims": [
+                {
+                    "id": "CLM-06-INV",
+                    "evidence_id": "EVID-06-INV",
+                    "claim_type": "INVOICE_ISSUED",
+                    "claimed_amount": 35000.0,
+                    "reference_id_hint": "INV-2026-088",
+                },
+                {
+                    "id": "CLM-06-SS",
+                    "evidence_id": "EVID-06-SS",
+                    "claim_type": "PAYMENT_SENT",
+                    "claimed_amount": 35000.0,
+                    "reference_id_hint": "408219381920",
+                },
+            ],
+            "transactions": [{
+                "id": "TXN-06",
+                "amount": 35000.0,
+                "direction": "CREDIT",
+                "bank_reference": "408219381920",
+                "evidence_ids": ["EVID-06-BANK"],
+            }],
+            "match_relationships": [{
+                "id": "MAT-06",
+                "relationship_type": "ONE_TO_ONE",
+                "status": "MATCHED",
+                "source_claim_ids": ["CLM-06-INV"],
+                "target_transaction_ids": ["TXN-06"],
+                "matched_amount": 35000.0,
+                "target_amount": 35000.0,
+                "score": 1.0,
+                "matched_signals": ["EXACT_REFERENCE", "EXACT_AMOUNT_MATCH"],
+                "conflicting_signals": [],
+                "explanation": "Invoice matched with bank settlement.",
+            }],
+            "expected_status": "SAME_EVENT",
+            "expected_group_count": 1,
+        },
+        {
+            "case_id": "DAY6-07-THREE-SEPARATE-INSTALLMENTS",
+            "description": "Three separate milestone payments (10k, 5k, 5k) remain 3 distinct event groups -> 3 Groups",
+            "evidence_items": [
+                {"id": "EVID-07A", "modality": "BANK_STATEMENT", "source_type": "BANK_CSV", "source_name": "stmt.csv", "raw_payload": "Payment 1: 10k"},
+                {"id": "EVID-07B", "modality": "BANK_STATEMENT", "source_type": "BANK_CSV", "source_name": "stmt.csv", "raw_payload": "Payment 2: 5k"},
+                {"id": "EVID-07C", "modality": "BANK_STATEMENT", "source_type": "BANK_CSV", "source_name": "stmt.csv", "raw_payload": "Payment 3: 5k"},
+            ],
+            "claims": [],
+            "transactions": [
+                {"id": "TXN-07A", "amount": 10000.0, "direction": "CREDIT", "evidence_ids": ["EVID-07A"]},
+                {"id": "TXN-07B", "amount": 5000.0, "direction": "CREDIT", "evidence_ids": ["EVID-07B"]},
+                {"id": "TXN-07C", "amount": 5000.0, "direction": "CREDIT", "evidence_ids": ["EVID-07C"]},
+            ],
+            "expected_status": "DISTINCT_EVENT",
+            "expected_group_count": 3,
+        },
+        {
+            "case_id": "DAY6-08-AMBIGUOUS-IDENTICAL-SCREENSHOTS",
+            "description": "Two identical unreferenced screenshots with 1 bank statement -> AMBIGUOUS / POSSIBLE_DUPLICATE",
+            "evidence_items": [
+                {"id": "EVID-08-BANK", "modality": "BANK_STATEMENT", "source_type": "BANK_CSV", "source_name": "stmt.csv", "raw_payload": "10/08/2026, 25k credit"},
+                {"id": "EVID-08-SS1", "modality": "PAYMENT_SCREENSHOT", "source_type": "MANUAL_UPLOAD", "source_name": "ss1.png", "raw_payload": "GPay 25k sent to client"},
+                {"id": "EVID-08-SS2", "modality": "PAYMENT_SCREENSHOT", "source_type": "MANUAL_UPLOAD", "source_name": "ss2.png", "raw_payload": "GPay 25k sent to client copy"},
+            ],
+            "claims": [
+                {"id": "CLM-08-SS1", "evidence_id": "EVID-08-SS1", "claim_type": "PAYMENT_SENT", "claimed_amount": 25000.0},
+                {"id": "CLM-08-SS2", "evidence_id": "EVID-08-SS2", "claim_type": "PAYMENT_SENT", "claimed_amount": 25000.0},
+            ],
+            "transactions": [
+                {"id": "TXN-08", "amount": 25000.0, "direction": "CREDIT", "evidence_ids": ["EVID-08-BANK"]},
+            ],
+            "expected_status": "AMBIGUOUS",
+            "expected_group_count": 1,
+        },
+    ]
+
+    output_file = samples_dir / "deduplication_cases.json"
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump({"test_cases": test_cases}, f, indent=2, ensure_ascii=False)
+
+    print(f"Day 6 deduplication cases generated at {output_file}")
+
+
+if __name__ == "__main__":
+    create_day6_samples()

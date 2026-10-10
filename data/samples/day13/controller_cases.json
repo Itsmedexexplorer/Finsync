@@ -1,0 +1,441 @@
+{
+  "description": "Day 13 AI Finance Controller Evaluation Scenarios",
+  "version": "1.0.0",
+  "test_cases": [
+    {
+      "case_id": "DAY13-01-CLEAN-CONFIRMED",
+      "description": "Clean 1:1 invoice and bank payment match with 100% confidence.",
+      "expected_risk_level": "NONE",
+      "expected_requires_review": false,
+      "expected_primary_action": "CONFIRM_RECONCILIATION",
+      "case_input": {
+        "case_id": "DAY13-01-CLEAN-CONFIRMED",
+        "evidence_items": [
+          {
+            "id": "EVID-01",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_101.pdf",
+            "raw_payload": "Invoice for INR 35,000 to Rahul Kumar"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-01",
+            "amount": 35000.0,
+            "direction": "CREDIT",
+            "bank_reference": "408219381920",
+            "origin_entity_id": "ENT-001"
+          }
+        ],
+        "entities": [
+          {
+            "id": "ENT-001",
+            "canonical_name": "Rahul Kumar",
+            "entity_type": "INDIVIDUAL",
+            "pan": "ABCDE1234F"
+          }
+        ],
+        "metadata": {
+          "precomputed_claims": [
+            {
+              "id": "CLM-01",
+              "evidence_id": "EVID-01",
+              "claim_type": "INVOICE_ISSUED",
+              "claimed_amount": 35000.0,
+              "reference_id_hint": "408219381920",
+              "counterparty_hint": "Rahul Kumar"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY13-02-AMBIGUOUS-ENTITY",
+      "description": "Claim matches multiple distinct candidate entities with equal likelihood.",
+      "expected_risk_level": "HIGH",
+      "expected_requires_review": true,
+      "expected_primary_action": "VERIFY_ENTITY",
+      "case_input": {
+        "case_id": "DAY13-02-AMBIGUOUS-ENTITY",
+        "evidence_items": [
+          {
+            "id": "EVID-02",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_102.pdf",
+            "raw_payload": "Invoice for INR 25,000"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-02",
+            "amount": 25000.0,
+            "direction": "CREDIT",
+            "origin_entity_id": "ENT-002A"
+          }
+        ],
+        "entities": [
+          {"id": "ENT-002A", "canonical_name": "R Kumar", "entity_type": "INDIVIDUAL"},
+          {"id": "ENT-002B", "canonical_name": "Rahul Kumar", "entity_type": "INDIVIDUAL"}
+        ],
+        "metadata": {
+          "precomputed_claims": [
+            {
+              "id": "CLM-02",
+              "evidence_id": "EVID-02",
+              "claim_type": "INVOICE_ISSUED",
+              "claimed_amount": 25000.0
+            }
+          ],
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-ENT-AMB",
+              "discrepancy_type": "ENTITY_MISMATCH",
+              "severity": "ERROR",
+              "message": "Multiple ambiguous entity candidates for R Kumar",
+              "involved_claim_ids": ["CLM-02"],
+              "involved_transaction_ids": ["TXN-02"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY13-03-AMBIGUOUS-TRANSACTION",
+      "description": "Single invoice claim matches two identical candidate bank credits.",
+      "expected_risk_level": "HIGH",
+      "expected_requires_review": true,
+      "expected_primary_action": "REVIEW_CASE",
+      "case_input": {
+        "case_id": "DAY13-03-AMBIGUOUS-TRANSACTION",
+        "evidence_items": [
+          {
+            "id": "EVID-03",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_103.pdf",
+            "raw_payload": "Invoice for INR 40,000"
+          }
+        ],
+        "transactions": [
+          {"id": "TXN-03A", "amount": 40000.0, "direction": "CREDIT"},
+          {"id": "TXN-03B", "amount": 40000.0, "direction": "CREDIT"}
+        ],
+        "metadata": {
+          "precomputed_claims": [
+            {
+              "id": "CLM-03",
+              "evidence_id": "EVID-03",
+              "claim_type": "INVOICE_ISSUED",
+              "claimed_amount": 40000.0
+            }
+          ],
+          "precomputed_match_relationships": [
+            {
+              "id": "MAT-03",
+              "relationship_type": "ONE_TO_ONE",
+              "status": "AMBIGUOUS",
+              "source_claim_ids": ["CLM-03"],
+              "target_transaction_ids": ["TXN-03A", "TXN-03B"],
+              "matched_amount": 40000.0,
+              "target_amount": 40000.0,
+              "score": 0.80,
+              "explanation": "Multiple identical transaction candidates"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY13-04-AMOUNT-CONTRADICTION",
+      "description": "Invoice for INR 20,000 contradicts bank credit of INR 18,000.",
+      "expected_risk_level": "HIGH",
+      "expected_requires_review": true,
+      "expected_primary_action": "INVESTIGATE_CONTRADICTION",
+      "case_input": {
+        "case_id": "DAY13-04-AMOUNT-CONTRADICTION",
+        "evidence_items": [
+          {
+            "id": "EVID-04",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_104.pdf",
+            "raw_payload": "Invoice for INR 20,000"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-04",
+            "amount": 18000.0,
+            "direction": "CREDIT",
+            "bank_reference": "408219381920"
+          }
+        ],
+        "metadata": {
+          "precomputed_claims": [
+            {
+              "id": "CLM-04",
+              "evidence_id": "EVID-04",
+              "claim_type": "INVOICE_ISSUED",
+              "claimed_amount": 20000.0,
+              "reference_id_hint": "408219381920"
+            }
+          ],
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-04",
+              "discrepancy_type": "AMOUNT_MISMATCH",
+              "severity": "ERROR",
+              "message": "Amount mismatch: expected 20000.00, observed 18000.00",
+              "expected_value": "20000.00",
+              "observed_value": "18000.00",
+              "involved_claim_ids": ["CLM-04"],
+              "involved_transaction_ids": ["TXN-04"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY13-05-ENTITY-CONTRADICTION",
+      "description": "Invoice issued to Rahul Kumar matches payment deposited by Rohit Sharma.",
+      "expected_risk_level": "CRITICAL",
+      "expected_requires_review": true,
+      "expected_primary_action": "VERIFY_ENTITY",
+      "case_input": {
+        "case_id": "DAY13-05-ENTITY-CONTRADICTION",
+        "evidence_items": [
+          {
+            "id": "EVID-05",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_105.pdf",
+            "raw_payload": "Invoice for INR 25,000 to Rahul Kumar"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-05",
+            "amount": 25000.0,
+            "direction": "CREDIT",
+            "origin_entity_id": "ENT-ROHIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_claims": [
+            {
+              "id": "CLM-05",
+              "evidence_id": "EVID-05",
+              "claim_type": "INVOICE_ISSUED",
+              "claimed_amount": 25000.0,
+              "counterparty_hint": "Rahul Kumar"
+            }
+          ],
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-05",
+              "discrepancy_type": "ENTITY_MISMATCH",
+              "severity": "CRITICAL",
+              "message": "Entity mismatch: expected Rahul Kumar, observed Rohit Sharma",
+              "expected_value": "Rahul Kumar",
+              "observed_value": "Rohit Sharma",
+              "involved_claim_ids": ["CLM-05"],
+              "involved_transaction_ids": ["TXN-05"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY13-06-REFERENCE-CONTRADICTION",
+      "description": "Invoice references UTR 408219381920 but bank record contains UTR 999999999999.",
+      "expected_risk_level": "HIGH",
+      "expected_requires_review": true,
+      "expected_primary_action": "INVESTIGATE_CONTRADICTION",
+      "case_input": {
+        "case_id": "DAY13-06-REFERENCE-CONTRADICTION",
+        "evidence_items": [
+          {
+            "id": "EVID-06",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_106.pdf",
+            "raw_payload": "Invoice for INR 20,000"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-06",
+            "amount": 20000.0,
+            "direction": "CREDIT",
+            "bank_reference": "999999999999"
+          }
+        ],
+        "metadata": {
+          "precomputed_claims": [
+            {
+              "id": "CLM-06",
+              "evidence_id": "EVID-06",
+              "claim_type": "INVOICE_ISSUED",
+              "claimed_amount": 20000.0,
+              "reference_id_hint": "408219381920"
+            }
+          ],
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-06",
+              "discrepancy_type": "REFERENCE_MISMATCH",
+              "severity": "ERROR",
+              "message": "Reference mismatch: expected 408219381920, observed 999999999999",
+              "expected_value": "408219381920",
+              "observed_value": "999999999999",
+              "involved_claim_ids": ["CLM-06"],
+              "involved_transaction_ids": ["TXN-06"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY13-07-PARTIAL-SETTLEMENT",
+      "description": "Invoice for INR 20,000 with partial payment of INR 12,000 (INR 8,000 outstanding).",
+      "expected_risk_level": "MEDIUM",
+      "expected_requires_review": true,
+      "expected_primary_action": "VERIFY_TRANSACTION",
+      "case_input": {
+        "case_id": "DAY13-07-PARTIAL-SETTLEMENT",
+        "evidence_items": [
+          {
+            "id": "EVID-07",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_107.pdf",
+            "raw_payload": "Invoice for INR 20,000"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-07",
+            "amount": 12000.0,
+            "direction": "CREDIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_claims": [
+            {
+              "id": "CLM-07",
+              "evidence_id": "EVID-07",
+              "claim_type": "INVOICE_ISSUED",
+              "claimed_amount": 20000.0
+            }
+          ],
+          "precomputed_match_relationships": [
+            {
+              "id": "MAT-07",
+              "relationship_type": "PARTIAL",
+              "status": "MATCHED",
+              "source_claim_ids": ["CLM-07"],
+              "target_transaction_ids": ["TXN-07"],
+              "matched_amount": 12000.0,
+              "target_amount": 20000.0,
+              "score": 0.95,
+              "explanation": "Partial milestone settlement"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY13-08-MISSING-EVIDENCE",
+      "description": "WhatsApp chat claims payment was sent but no transaction record exists.",
+      "expected_risk_level": "MEDIUM",
+      "expected_requires_review": true,
+      "expected_primary_action": "REQUEST_MISSING_EVIDENCE",
+      "case_input": {
+        "case_id": "DAY13-08-MISSING-EVIDENCE",
+        "raw_text_messages": [
+          {
+            "text": "Bhai ₹15,000 bhej diya check karo",
+            "source_name": "chat.txt"
+          }
+        ],
+        "transactions": []
+      }
+    },
+    {
+      "case_id": "DAY13-09-UNMATCHED-TRANSACTION",
+      "description": "Direct bank credit of INR 35,000 with no matching invoice or claim.",
+      "expected_risk_level": "MEDIUM",
+      "expected_requires_review": true,
+      "expected_primary_action": "VERIFY_TRANSACTION",
+      "case_input": {
+        "case_id": "DAY13-09-UNMATCHED-TRANSACTION",
+        "evidence_items": [],
+        "transactions": [
+          {
+            "id": "TXN-09",
+            "amount": 35000.0,
+            "direction": "CREDIT",
+            "bank_reference": "408219381920"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "DAY13-10-MULTI-ISSUE-CASE",
+      "description": "Multiple simultaneous discrepancies: amount mismatch and conflicting claim.",
+      "expected_risk_level": "HIGH",
+      "expected_requires_review": true,
+      "expected_primary_action": "INVESTIGATE_CONTRADICTION",
+      "case_input": {
+        "case_id": "DAY13-10-MULTI-ISSUE-CASE",
+        "evidence_items": [
+          {
+            "id": "EVID-10",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_110.pdf",
+            "raw_payload": "Invoice for INR 50,000"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-10",
+            "amount": 45000.0,
+            "direction": "CREDIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_claims": [
+            {
+              "id": "CLM-10",
+              "evidence_id": "EVID-10",
+              "claim_type": "INVOICE_ISSUED",
+              "claimed_amount": 50000.0
+            }
+          ],
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-10A",
+              "discrepancy_type": "AMOUNT_MISMATCH",
+              "severity": "ERROR",
+              "message": "Amount mismatch: expected 50000.00, observed 45000.00",
+              "expected_value": "50000.00",
+              "observed_value": "45000.00",
+              "involved_claim_ids": ["CLM-10"],
+              "involved_transaction_ids": ["TXN-10"]
+            },
+            {
+              "id": "DISC-10B",
+              "discrepancy_type": "CONFLICTING_CLAIMS",
+              "severity": "ERROR",
+              "message": "Conflicting customer statements regarding discount",
+              "involved_claim_ids": ["CLM-10"]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

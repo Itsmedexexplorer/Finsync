@@ -1,0 +1,560 @@
+{
+  "test_cases": [
+    {
+      "case_id": "DAY8-01-EXACT-CONFIRMATION",
+      "description": "Exact invoice/payment/reference/entity match -> CONFIRMED",
+      "claims": [
+        {
+          "id": "CLM-01",
+          "evidence_id": "EVID-01",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 35000.0,
+          "reference_id_hint": "408219381920",
+          "counterparty_hint": "Rahul Kumar"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-01",
+          "amount": 35000.0,
+          "direction": "CREDIT",
+          "bank_reference": "408219381920",
+          "origin_entity_id": "ENT-001",
+          "evidence_ids": [
+            "EVID-01-BANK"
+          ]
+        }
+      ],
+      "match_relationships": [
+        {
+          "id": "MAT-01",
+          "relationship_type": "ONE_TO_ONE",
+          "status": "MATCHED",
+          "source_claim_ids": [
+            "CLM-01"
+          ],
+          "target_transaction_ids": [
+            "TXN-01"
+          ],
+          "matched_amount": 35000.0,
+          "target_amount": 35000.0,
+          "score": 1.0,
+          "matched_signals": [
+            "EXACT_REFERENCE",
+            "EXACT_AMOUNT_MATCH",
+            "EXACT_ENTITY_MATCH"
+          ],
+          "conflicting_signals": [],
+          "explanation": "Exact 1:1 match",
+          "entity_id": "ENT-001"
+        }
+      ],
+      "claim_entity_map": {
+        "CLM-01": "ENT-001"
+      },
+      "expected_status": "CONFIRMED",
+      "expected_reconciled_amount": 35000.0,
+      "expected_outstanding_amount": 0.0
+    },
+    {
+      "case_id": "DAY8-02-PARTIAL-SETTLEMENT",
+      "description": "₹20,000 invoice with ₹10,000 + ₹5,000 partial payments -> PARTIALLY_SETTLED (Outstanding ₹5,000)",
+      "claims": [
+        {
+          "id": "CLM-02",
+          "evidence_id": "EVID-02",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 20000.0,
+          "counterparty_hint": "Priya Patel"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-02A",
+          "amount": 10000.0,
+          "direction": "CREDIT",
+          "origin_entity_id": "ENT-PRIYA",
+          "evidence_ids": [
+            "EVID-02A"
+          ]
+        },
+        {
+          "id": "TXN-02B",
+          "amount": 5000.0,
+          "direction": "CREDIT",
+          "origin_entity_id": "ENT-PRIYA",
+          "evidence_ids": [
+            "EVID-02B"
+          ]
+        }
+      ],
+      "match_relationships": [
+        {
+          "id": "MAT-02",
+          "relationship_type": "PARTIAL",
+          "status": "MATCHED",
+          "source_claim_ids": [
+            "CLM-02"
+          ],
+          "target_transaction_ids": [
+            "TXN-02A",
+            "TXN-02B"
+          ],
+          "matched_amount": 15000.0,
+          "target_amount": 20000.0,
+          "score": 0.95,
+          "explanation": "Partial settlement",
+          "entity_id": "ENT-PRIYA"
+        }
+      ],
+      "claim_entity_map": {
+        "CLM-02": "ENT-PRIYA"
+      },
+      "expected_status": "PARTIALLY_SETTLED",
+      "expected_reconciled_amount": 15000.0,
+      "expected_outstanding_amount": 5000.0
+    },
+    {
+      "case_id": "DAY8-03-MANY-TO-ONE-MILESTONES",
+      "description": "₹20,000 invoice settled by ₹10k + ₹5k + ₹5k -> CONFIRMED (Outstanding ₹0)",
+      "claims": [
+        {
+          "id": "CLM-03",
+          "evidence_id": "EVID-03",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 20000.0,
+          "counterparty_hint": "Bharat Tech"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-03A",
+          "amount": 10000.0,
+          "direction": "CREDIT",
+          "origin_entity_id": "ENT-BHARAT",
+          "evidence_ids": [
+            "EVID-03A"
+          ]
+        },
+        {
+          "id": "TXN-03B",
+          "amount": 5000.0,
+          "direction": "CREDIT",
+          "origin_entity_id": "ENT-BHARAT",
+          "evidence_ids": [
+            "EVID-03B"
+          ]
+        },
+        {
+          "id": "TXN-03C",
+          "amount": 5000.0,
+          "direction": "CREDIT",
+          "origin_entity_id": "ENT-BHARAT",
+          "evidence_ids": [
+            "EVID-03C"
+          ]
+        }
+      ],
+      "match_relationships": [
+        {
+          "id": "MAT-03",
+          "relationship_type": "MANY_TO_ONE",
+          "status": "MATCHED",
+          "source_claim_ids": [
+            "CLM-03"
+          ],
+          "target_transaction_ids": [
+            "TXN-03A",
+            "TXN-03B",
+            "TXN-03C"
+          ],
+          "matched_amount": 20000.0,
+          "target_amount": 20000.0,
+          "score": 0.95,
+          "matched_signals": [
+            "SUM_AMOUNT_MATCH",
+            "3_ITEMS_SUM"
+          ],
+          "conflicting_signals": [],
+          "explanation": "Many to one sum match",
+          "entity_id": "ENT-BHARAT"
+        }
+      ],
+      "claim_entity_map": {
+        "CLM-03": "ENT-BHARAT"
+      },
+      "expected_status": "CONFIRMED",
+      "expected_reconciled_amount": 20000.0,
+      "expected_outstanding_amount": 0.0
+    },
+    {
+      "case_id": "DAY8-04-UNEXPLAINED-AMOUNT-CONTRADICTION",
+      "description": "₹20,000 invoice vs ₹18,000 bank transaction without PARTIAL relationship -> CONTRADICTED",
+      "claims": [
+        {
+          "id": "CLM-04",
+          "evidence_id": "EVID-04",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 20000.0,
+          "reference_id_hint": "408219381920"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-04",
+          "amount": 18000.0,
+          "direction": "CREDIT",
+          "bank_reference": "408219381920",
+          "evidence_ids": [
+            "EVID-04-BANK"
+          ]
+        }
+      ],
+      "discrepancies": [
+        {
+          "id": "DISC-04",
+          "discrepancy_type": "AMOUNT_MISMATCH",
+          "severity": "ERROR",
+          "message": "Amount mismatch: Expected 20k vs observed 18k",
+          "expected_value": "20000.00",
+          "observed_value": "18000.00"
+        }
+      ],
+      "expected_status": "CONTRADICTED",
+      "expected_reconciled_amount": 18000.0
+    },
+    {
+      "case_id": "DAY8-05-ENTITY-MISMATCH-CONTRADICTION",
+      "description": "Claim entity Rahul Kumar vs transaction entity Rohit Sharma -> CONTRADICTED",
+      "claims": [
+        {
+          "id": "CLM-05",
+          "evidence_id": "EVID-05",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 25000.0,
+          "counterparty_hint": "Rahul Kumar"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-05",
+          "amount": 25000.0,
+          "direction": "CREDIT",
+          "origin_entity_id": "ENT-ROHIT",
+          "evidence_ids": [
+            "EVID-05-BANK"
+          ]
+        }
+      ],
+      "claim_entity_map": {
+        "CLM-05": "ENT-RAHUL"
+      },
+      "discrepancies": [
+        {
+          "id": "DISC-05",
+          "discrepancy_type": "ENTITY_MISMATCH",
+          "severity": "CRITICAL",
+          "message": "Entity mismatch: ENT-RAHUL vs ENT-ROHIT"
+        }
+      ],
+      "expected_status": "CONTRADICTED"
+    },
+    {
+      "case_id": "DAY8-06-CONFLICTING-REFERENCES",
+      "description": "Conflicting UTR values in same event -> CONTRADICTED",
+      "claims": [
+        {
+          "id": "CLM-06",
+          "evidence_id": "EVID-06",
+          "claim_type": "PAYMENT_SENT",
+          "claimed_amount": 20000.0,
+          "reference_id_hint": "999888777666"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-06",
+          "amount": 20000.0,
+          "direction": "CREDIT",
+          "bank_reference": "408219381920",
+          "evidence_ids": [
+            "EVID-06-BANK"
+          ]
+        }
+      ],
+      "discrepancies": [
+        {
+          "id": "DISC-06",
+          "discrepancy_type": "REFERENCE_MISMATCH",
+          "severity": "ERROR",
+          "message": "Reference mismatch: 999888777666 vs 408219381920"
+        }
+      ],
+      "expected_status": "CONTRADICTED"
+    },
+    {
+      "case_id": "DAY8-07-MISSING-UNVERIFIABLE-CLAIM",
+      "description": "'I sent the money' with no amount and no corroborating transaction -> UNVERIFIABLE",
+      "claims": [
+        {
+          "id": "CLM-07",
+          "evidence_id": "EVID-07",
+          "claim_type": "PAYMENT_SENT",
+          "claimed_amount": null
+        }
+      ],
+      "transactions": [],
+      "expected_status": "UNVERIFIABLE",
+      "expected_reconciled_amount": 0.0
+    },
+    {
+      "case_id": "DAY8-08-AMBIGUOUS-EQUAL-TRANSACTIONS",
+      "description": "Two equally plausible ₹20,000 transactions -> AMBIGUOUS",
+      "claims": [
+        {
+          "id": "CLM-08",
+          "evidence_id": "EVID-08",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 20000.0
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-08A",
+          "amount": 20000.0,
+          "direction": "CREDIT",
+          "evidence_ids": [
+            "EVID-08A"
+          ]
+        },
+        {
+          "id": "TXN-08B",
+          "amount": 20000.0,
+          "direction": "CREDIT",
+          "evidence_ids": [
+            "EVID-08B"
+          ]
+        }
+      ],
+      "match_relationships": [
+        {
+          "id": "MAT-08",
+          "relationship_type": "ONE_TO_ONE",
+          "status": "AMBIGUOUS",
+          "source_claim_ids": [
+            "CLM-08"
+          ],
+          "target_transaction_ids": [
+            "TXN-08A",
+            "TXN-08B"
+          ],
+          "matched_amount": 20000.0,
+          "target_amount": 20000.0,
+          "score": 0.85,
+          "explanation": "Ambiguous match"
+        }
+      ],
+      "expected_status": "AMBIGUOUS"
+    },
+    {
+      "case_id": "DAY8-09-UNMATCHED-TRANSACTION",
+      "description": "₹35,000 bank transaction with no corresponding obligation -> UNMATCHED",
+      "claims": [],
+      "transactions": [
+        {
+          "id": "TXN-09",
+          "amount": 35000.0,
+          "direction": "CREDIT",
+          "bank_reference": "408219381920",
+          "evidence_ids": [
+            "EVID-09-BANK"
+          ]
+        }
+      ],
+      "expected_status": "UNMATCHED",
+      "expected_reconciled_amount": 35000.0
+    },
+    {
+      "case_id": "DAY8-10-CROSS-MODAL-DEDUPLICATED-CONFIRMATION",
+      "description": "Invoice + bank statement + WhatsApp + screenshot all describe one payment -> CONFIRMED (1 financial event only)",
+      "claims": [
+        {
+          "id": "CLM-10-INV",
+          "evidence_id": "EVID-10-INV",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 35000.0,
+          "reference_id_hint": "408219381920"
+        },
+        {
+          "id": "CLM-10-SS",
+          "evidence_id": "EVID-10-SS",
+          "claim_type": "PAYMENT_SENT",
+          "claimed_amount": 35000.0,
+          "reference_id_hint": "408219381920"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-10",
+          "amount": 35000.0,
+          "direction": "CREDIT",
+          "bank_reference": "408219381920",
+          "evidence_ids": [
+            "EVID-10-BANK"
+          ]
+        }
+      ],
+      "deduplication_groups": [
+        {
+          "group_id": "GRP-10",
+          "status": "SAME_EVENT",
+          "member_evidence_ids": [
+            "EVID-10-INV",
+            "EVID-10-BANK",
+            "EVID-10-SS"
+          ],
+          "member_claim_ids": [
+            "CLM-10-INV",
+            "CLM-10-SS"
+          ],
+          "candidate_transaction_ids": [
+            "TXN-10"
+          ],
+          "explanation": "Grouped event"
+        }
+      ],
+      "match_relationships": [
+        {
+          "id": "MAT-10",
+          "relationship_type": "ONE_TO_ONE",
+          "status": "MATCHED",
+          "source_claim_ids": [
+            "CLM-10-INV"
+          ],
+          "target_transaction_ids": [
+            "TXN-10"
+          ],
+          "matched_amount": 35000.0,
+          "target_amount": 35000.0,
+          "score": 1.0,
+          "matched_signals": [
+            "EXACT_REFERENCE",
+            "EXACT_AMOUNT_MATCH"
+          ],
+          "conflicting_signals": [],
+          "explanation": "Invoice matched with bank settlement."
+        }
+      ],
+      "expected_status": "CONFIRMED",
+      "expected_reconciled_amount": 35000.0,
+      "expected_outstanding_amount": 0.0
+    },
+    {
+      "case_id": "DAY8-11-MULTILINGUAL-PAYMENT-CLAIM",
+      "description": "Hinglish payment claim ('20k GPay kar diya') + matching bank transaction -> CONFIRMED",
+      "claims": [
+        {
+          "id": "CLM-11",
+          "evidence_id": "EVID-11-CHAT",
+          "claim_type": "PAYMENT_SENT",
+          "claimed_amount": 20000.0,
+          "counterparty_hint": "Rahul Kumar"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-11",
+          "amount": 20000.0,
+          "direction": "CREDIT",
+          "origin_entity_id": "ENT-001",
+          "evidence_ids": [
+            "EVID-11-BANK"
+          ]
+        }
+      ],
+      "match_relationships": [
+        {
+          "id": "MAT-11",
+          "relationship_type": "ONE_TO_ONE",
+          "status": "MATCHED",
+          "source_claim_ids": [
+            "CLM-11"
+          ],
+          "target_transaction_ids": [
+            "TXN-11"
+          ],
+          "matched_amount": 20000.0,
+          "target_amount": 20000.0,
+          "score": 0.95,
+          "matched_signals": [
+            "EXACT_AMOUNT_MATCH",
+            "EXACT_ENTITY_MATCH"
+          ],
+          "conflicting_signals": [],
+          "explanation": "Matched",
+          "entity_id": "ENT-001"
+        }
+      ],
+      "claim_entity_map": {
+        "CLM-11": "ENT-001"
+      },
+      "expected_status": "CONFIRMED",
+      "expected_reconciled_amount": 20000.0,
+      "expected_outstanding_amount": 0.0
+    },
+    {
+      "case_id": "DAY8-12-CONTRADICTION-DOMINANCE-OVER-HIGH-SCORE",
+      "description": "High Day 5 matching score but material Day 7 contradiction -> CONTRADICTED (Not Confirmed!)",
+      "claims": [
+        {
+          "id": "CLM-12",
+          "evidence_id": "EVID-12",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 50000.0,
+          "reference_id_hint": "408219381920"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-12",
+          "amount": 35000.0,
+          "direction": "CREDIT",
+          "bank_reference": "408219381920",
+          "evidence_ids": [
+            "EVID-12-BANK"
+          ]
+        }
+      ],
+      "match_relationships": [
+        {
+          "id": "MAT-12",
+          "relationship_type": "ONE_TO_ONE",
+          "status": "MATCHED",
+          "source_claim_ids": [
+            "CLM-12"
+          ],
+          "target_transaction_ids": [
+            "TXN-12"
+          ],
+          "matched_amount": 35000.0,
+          "target_amount": 50000.0,
+          "score": 0.95,
+          "matched_signals": [
+            "EXACT_REFERENCE"
+          ],
+          "conflicting_signals": [],
+          "explanation": "Reference matched"
+        }
+      ],
+      "discrepancies": [
+        {
+          "id": "DISC-12",
+          "discrepancy_type": "AMOUNT_MISMATCH",
+          "severity": "ERROR",
+          "message": "Amount mismatch: 50k vs 35k"
+        }
+      ],
+      "expected_status": "CONTRADICTED"
+    }
+  ]
+}

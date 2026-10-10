@@ -1,0 +1,473 @@
+{
+  "description": "Day 15 Financial Case Portfolio & Operations Intelligence Evaluation Scenarios",
+  "version": "1.0.0",
+  "test_cases": [
+    {
+      "case_id": "DAY15-01-CLEAN-CONFIRMED",
+      "description": "Clean 1:1 invoice and bank payment match -> LOW priority, ON_TRACK SLA, ₹35,000 exposure",
+      "expected_deterministic_status": "CONFIRMED",
+      "expected_risk_level": "LOW",
+      "expected_priority": "LOW",
+      "expected_sla_status": "ON_TRACK",
+      "expected_amount_exposure": 35000.0,
+      "expected_disputed_amount": 0.0,
+      "expected_unresolved_amount": 0.0,
+      "case_input": {
+        "case_id": "DAY15-01-CLEAN-CONFIRMED",
+        "evidence": [
+          {
+            "id": "EVID-1501",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1501.pdf",
+            "raw_payload": "Invoice for INR 35,000 to Rahul Kumar"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1501",
+            "evidence_id": "EVID-1501",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 35000.0,
+            "reference_id_hint": "408219381920",
+            "counterparty_hint": "Rahul Kumar"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1501",
+            "amount": 35000.0,
+            "direction": "CREDIT",
+            "bank_reference": "408219381920",
+            "origin_entity_id": "ENT-1501"
+          }
+        ],
+        "entities": [
+          {
+            "id": "ENT-1501",
+            "canonical_name": "Rahul Kumar",
+            "entity_type": "INDIVIDUAL",
+            "pan": "ABCDE1234F"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "DAY15-02-CRITICAL-ENTITY-CONTRADICTION",
+      "description": "Invoice issued to Rahul Kumar matches payment deposited by Rohit Sharma -> CRITICAL priority, ₹25,000 disputed",
+      "expected_deterministic_status": "CONTRADICTED",
+      "expected_risk_level": "CRITICAL",
+      "expected_priority": "CRITICAL",
+      "expected_amount_exposure": 25000.0,
+      "expected_disputed_amount": 25000.0,
+      "case_input": {
+        "case_id": "DAY15-02-CRITICAL-ENTITY-CONTRADICTION",
+        "evidence": [
+          {
+            "id": "EVID-1502",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1502.pdf",
+            "raw_payload": "Invoice for INR 25,000 to Rahul Kumar"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1502",
+            "evidence_id": "EVID-1502",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 25000.0,
+            "counterparty_hint": "Rahul Kumar"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1502",
+            "amount": 25000.0,
+            "direction": "CREDIT",
+            "origin_entity_id": "ENT-ROHIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1502",
+              "discrepancy_type": "ENTITY_MISMATCH",
+              "severity": "CRITICAL",
+              "message": "Entity mismatch: expected Rahul Kumar, observed Rohit Sharma",
+              "expected_value": "Rahul Kumar",
+              "observed_value": "Rohit Sharma",
+              "involved_claim_ids": ["CLM-1502"],
+              "involved_transaction_ids": ["TXN-1502"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY15-03-HIGH-AMOUNT-CONTRADICTION",
+      "description": "Invoice for INR 20,000 vs Bank Credit of INR 18,000 -> HIGH priority, ₹20,000 exposure",
+      "expected_deterministic_status": "CONTRADICTED",
+      "expected_risk_level": "HIGH",
+      "expected_priority": "HIGH",
+      "expected_amount_exposure": 20000.0,
+      "expected_disputed_amount": 2000.0,
+      "case_input": {
+        "case_id": "DAY15-03-HIGH-AMOUNT-CONTRADICTION",
+        "evidence": [
+          {
+            "id": "EVID-1503",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1503.pdf",
+            "raw_payload": "Invoice for INR 20,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1503",
+            "evidence_id": "EVID-1503",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 20000.0,
+            "reference_id_hint": "408219381920"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1503",
+            "amount": 18000.0,
+            "direction": "CREDIT",
+            "bank_reference": "408219381920"
+          }
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1503",
+              "discrepancy_type": "AMOUNT_MISMATCH",
+              "severity": "ERROR",
+              "message": "Amount mismatch: expected 20000.00, observed 18000.00",
+              "expected_value": "20000.00",
+              "observed_value": "18000.00",
+              "involved_claim_ids": ["CLM-1503"],
+              "involved_transaction_ids": ["TXN-1503"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY15-04-PARTIAL-SETTLEMENT",
+      "description": "Invoice for INR 20,000 with partial payment of INR 12,000 -> MEDIUM priority, Partial exposure = ₹8,000",
+      "expected_deterministic_status": "PARTIALLY_SETTLED",
+      "expected_risk_level": "MEDIUM",
+      "expected_priority": "MEDIUM",
+      "expected_amount_exposure": 20000.0,
+      "expected_partial_amount": 8000.0,
+      "case_input": {
+        "case_id": "DAY15-04-PARTIAL-SETTLEMENT",
+        "evidence": [
+          {
+            "id": "EVID-1504",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1504.pdf",
+            "raw_payload": "Invoice for INR 20,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1504",
+            "evidence_id": "EVID-1504",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 20000.0
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1504",
+            "amount": 12000.0,
+            "direction": "CREDIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_match_relationships": [
+            {
+              "id": "MAT-1504",
+              "relationship_type": "PARTIAL",
+              "status": "MATCHED",
+              "source_claim_ids": ["CLM-1504"],
+              "target_transaction_ids": ["TXN-1504"],
+              "matched_amount": 12000.0,
+              "target_amount": 20000.0,
+              "score": 0.95,
+              "explanation": "Partial milestone settlement"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY15-05-MISSING-EVIDENCE",
+      "description": "WhatsApp chat claims payment was sent but no transaction record exists -> MEDIUM priority",
+      "expected_deterministic_status": "UNVERIFIABLE",
+      "expected_risk_level": "MEDIUM",
+      "expected_priority": "MEDIUM",
+      "case_input": {
+        "case_id": "DAY15-05-MISSING-EVIDENCE",
+        "raw_text_messages": [
+          {
+            "text": "Bhai ₹15,000 bhej diya check karo",
+            "source_name": "chat.txt"
+          }
+        ],
+        "transactions": []
+      }
+    },
+    {
+      "case_id": "DAY15-06-OVERDUE-CRITICAL-CASE",
+      "description": "Critical case created in the past violating the 4-hour SLA window -> OVERDUE SLA",
+      "expected_deterministic_status": "CONTRADICTED",
+      "expected_risk_level": "CRITICAL",
+      "expected_priority": "CRITICAL",
+      "expected_sla_status": "OVERDUE",
+      "simulated_age_hours": 6.0,
+      "case_input": {
+        "case_id": "DAY15-06-OVERDUE-CRITICAL-CASE",
+        "evidence": [
+          {
+            "id": "EVID-1506",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1506.pdf",
+            "raw_payload": "Invoice for INR 40,000 to Rahul Kumar"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1506",
+            "evidence_id": "EVID-1506",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 40000.0
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1506",
+            "amount": 40000.0,
+            "direction": "CREDIT",
+            "origin_entity_id": "ENT-ROHIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1506",
+              "discrepancy_type": "ENTITY_MISMATCH",
+              "severity": "CRITICAL",
+              "message": "Entity mismatch: expected Rahul Kumar, observed Rohit Sharma",
+              "expected_value": "Rahul Kumar",
+              "observed_value": "Rohit Sharma",
+              "involved_claim_ids": ["CLM-1506"],
+              "involved_transaction_ids": ["TXN-1506"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY15-07-DUE-SOON-HIGH-CASE",
+      "description": "High priority case where remaining SLA duration is <= 20% of 24h window (e.g. 21h elapsed) -> DUE_SOON SLA",
+      "expected_deterministic_status": "CONTRADICTED",
+      "expected_risk_level": "HIGH",
+      "expected_priority": "HIGH",
+      "expected_sla_status": "DUE_SOON",
+      "simulated_age_hours": 21.0,
+      "case_input": {
+        "case_id": "DAY15-07-DUE-SOON-HIGH-CASE",
+        "evidence": [
+          {
+            "id": "EVID-1507",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1507.pdf",
+            "raw_payload": "Invoice for INR 15,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1507",
+            "evidence_id": "EVID-1507",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 15000.0
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1507",
+            "amount": 14000.0,
+            "direction": "CREDIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1507",
+              "discrepancy_type": "AMOUNT_MISMATCH",
+              "severity": "ERROR",
+              "message": "Amount mismatch: expected 15000.00, observed 14000.00",
+              "expected_value": "15000.00",
+              "observed_value": "14000.00",
+              "involved_claim_ids": ["CLM-1507"],
+              "involved_transaction_ids": ["TXN-1507"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY15-08-MULTIPLE-CASE-PORTFOLIO",
+      "description": "Verification of multi-case portfolio aggregation across confirmed and contested cases.",
+      "expected_deterministic_status": "CONFIRMED",
+      "expected_risk_level": "LOW",
+      "expected_priority": "LOW",
+      "case_input": {
+        "case_id": "DAY15-08-MULTIPLE-CASE-PORTFOLIO",
+        "evidence": [
+          {
+            "id": "EVID-1508",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1508.pdf",
+            "raw_payload": "Invoice for INR 50,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1508",
+            "evidence_id": "EVID-1508",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 50000.0,
+            "reference_id_hint": "UTR-1508"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1508",
+            "amount": 50000.0,
+            "direction": "CREDIT",
+            "bank_reference": "UTR-1508"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "DAY15-09-SAME-EVIDENCE-NO-DOUBLE-COUNT",
+      "description": "Multi-modal evidence for a single ₹20,000 payment must not produce ₹60,000 exposure.",
+      "expected_deterministic_status": "CONFIRMED",
+      "expected_amount_exposure": 20000.0,
+      "expected_disputed_amount": 0.0,
+      "case_input": {
+        "case_id": "DAY15-09-SAME-EVIDENCE-NO-DOUBLE-COUNT",
+        "evidence": [
+          {"id": "EVID-1509A", "modality": "INVOICE", "source_type": "ZOHO_INVOICE", "source_name": "inv.pdf", "raw_payload": "Invoice for INR 20,000"},
+          {"id": "EVID-1509B", "modality": "BANK_STATEMENT", "source_type": "BANK_CSV", "source_name": "bank.csv", "raw_payload": "CR INR 20,000"},
+          {"id": "EVID-1509C", "modality": "PAYMENT_SCREENSHOT", "source_type": "MANUAL_UPLOAD", "source_name": "gpay.png", "raw_payload": "Paid ₹20,000"}
+        ],
+        "claims": [
+          {"id": "CLM-1509A", "evidence_id": "EVID-1509A", "claim_type": "INVOICE_ISSUED", "claimed_amount": 20000.0, "reference_id_hint": "408219381920"}
+        ],
+        "transactions": [
+          {"id": "TXN-1509A", "amount": 20000.0, "direction": "CREDIT", "bank_reference": "408219381920"}
+        ]
+      }
+    },
+    {
+      "case_id": "DAY15-10-REVIEWER-WORKLOAD",
+      "description": "Validation scenario testing reviewer assignment and capacity aggregation.",
+      "expected_deterministic_status": "CONTRADICTED",
+      "expected_risk_level": "CRITICAL",
+      "expected_priority": "CRITICAL",
+      "case_input": {
+        "case_id": "DAY15-10-REVIEWER-WORKLOAD",
+        "evidence": [
+          {"id": "EVID-1510", "modality": "INVOICE", "source_type": "ZOHO_INVOICE", "source_name": "inv_1510.pdf", "raw_payload": "Invoice for INR 30,000"}
+        ],
+        "claims": [
+          {"id": "CLM-1510", "evidence_id": "EVID-1510", "claim_type": "INVOICE_ISSUED", "claimed_amount": 30000.0}
+        ],
+        "transactions": [
+          {"id": "TXN-1510", "amount": 30000.0, "direction": "CREDIT", "origin_entity_id": "ENT-ROHIT"}
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1510",
+              "discrepancy_type": "ENTITY_MISMATCH",
+              "severity": "CRITICAL",
+              "message": "Entity mismatch",
+              "expected_value": "Rahul Kumar",
+              "observed_value": "Rohit Sharma",
+              "involved_claim_ids": ["CLM-1510"],
+              "involved_transaction_ids": ["TXN-1510"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY15-11-FILTERING-AND-PAGINATION",
+      "description": "Scenario testing deterministic search filtering and page limits.",
+      "expected_deterministic_status": "CONFIRMED",
+      "expected_risk_level": "LOW",
+      "expected_priority": "LOW",
+      "case_input": {
+        "case_id": "DAY15-11-FILTERING-AND-PAGINATION",
+        "evidence": [
+          {"id": "EVID-1511", "modality": "INVOICE", "source_type": "ZOHO_INVOICE", "source_name": "inv_1511.pdf", "raw_payload": "Invoice for INR 10,000"}
+        ],
+        "claims": [
+          {"id": "CLM-1511", "evidence_id": "EVID-1511", "claim_type": "INVOICE_ISSUED", "claimed_amount": 10000.0, "reference_id_hint": "REF-1511"}
+        ],
+        "transactions": [
+          {"id": "TXN-1511", "amount": 10000.0, "direction": "CREDIT", "bank_reference": "REF-1511"}
+        ]
+      }
+    },
+    {
+      "case_id": "DAY15-12-EXPOSURE-AGGREGATION",
+      "description": "Scenario testing multi-issue exposure synthesis and financial breakdown.",
+      "expected_deterministic_status": "CONTRADICTED",
+      "expected_risk_level": "HIGH",
+      "expected_priority": "HIGH",
+      "expected_amount_exposure": 60000.0,
+      "expected_disputed_amount": 10000.0,
+      "case_input": {
+        "case_id": "DAY15-12-EXPOSURE-AGGREGATION",
+        "evidence": [
+          {"id": "EVID-1512", "modality": "INVOICE", "source_type": "ZOHO_INVOICE", "source_name": "inv_1512.pdf", "raw_payload": "Invoice for INR 60,000"}
+        ],
+        "claims": [
+          {"id": "CLM-1512", "evidence_id": "EVID-1512", "claim_type": "INVOICE_ISSUED", "claimed_amount": 60000.0}
+        ],
+        "transactions": [
+          {"id": "TXN-1512", "amount": 50000.0, "direction": "CREDIT"}
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1512",
+              "discrepancy_type": "AMOUNT_MISMATCH",
+              "severity": "ERROR",
+              "message": "Amount mismatch: expected 60000.00, observed 50000.00",
+              "expected_value": "60000.00",
+              "observed_value": "50000.00",
+              "involved_claim_ids": ["CLM-1512"],
+              "involved_transaction_ids": ["TXN-1512"]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

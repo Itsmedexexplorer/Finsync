@@ -1,0 +1,485 @@
+{
+  "description": "Day 14 Human Review & Case Investigation Evaluation Scenarios",
+  "version": "1.0.0",
+  "test_cases": [
+    {
+      "case_id": "DAY14-01-CLEAN-NO-REVIEW",
+      "description": "Clean 1:1 invoice and bank payment match with 100% confidence -> Review NOT_REQUIRED",
+      "expected_deterministic_status": "CONFIRMED",
+      "expected_requires_review": false,
+      "expected_initial_status": "NOT_REQUIRED",
+      "expected_priority": "LOW",
+      "case_input": {
+        "case_id": "DAY14-01-CLEAN-NO-REVIEW",
+        "evidence": [
+          {
+            "id": "EVID-1401",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1401.pdf",
+            "raw_payload": "Invoice for INR 35,000 to Rahul Kumar"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1401",
+            "evidence_id": "EVID-1401",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 35000.0,
+            "reference_id_hint": "408219381920",
+            "counterparty_hint": "Rahul Kumar"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1401",
+            "amount": 35000.0,
+            "direction": "CREDIT",
+            "bank_reference": "408219381920",
+            "origin_entity_id": "ENT-1401"
+          }
+        ],
+        "entities": [
+          {
+            "id": "ENT-1401",
+            "canonical_name": "Rahul Kumar",
+            "entity_type": "INDIVIDUAL",
+            "pan": "ABCDE1234F"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "DAY14-02-AMBIGUOUS-ENTITY",
+      "description": "Claim matches multiple distinct candidate entities -> Review PENDING (HIGH)",
+      "expected_deterministic_status": "CONTRADICTED",
+      "expected_requires_review": true,
+      "expected_initial_status": "PENDING",
+      "expected_priority": "HIGH",
+      "expected_primary_action_type": "VERIFY_ENTITY",
+      "case_input": {
+        "case_id": "DAY14-02-AMBIGUOUS-ENTITY",
+        "evidence": [
+          {
+            "id": "EVID-1402",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1402.pdf",
+            "raw_payload": "Invoice for INR 25,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1402",
+            "evidence_id": "EVID-1402",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 25000.0
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1402",
+            "amount": 25000.0,
+            "direction": "CREDIT",
+            "origin_entity_id": "ENT-1402A"
+          }
+        ],
+        "entities": [
+          {"id": "ENT-1402A", "canonical_name": "R Kumar", "entity_type": "INDIVIDUAL"},
+          {"id": "ENT-1402B", "canonical_name": "Rahul Kumar", "entity_type": "INDIVIDUAL"}
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1402",
+              "discrepancy_type": "ENTITY_MISMATCH",
+              "severity": "ERROR",
+              "message": "Multiple ambiguous entity candidates for R Kumar",
+              "involved_claim_ids": ["CLM-1402"],
+              "involved_transaction_ids": ["TXN-1402"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY14-03-AMBIGUOUS-TRANSACTION",
+      "description": "Two identical transactions matching same invoice -> Review PENDING (HIGH)",
+      "expected_deterministic_status": "AMBIGUOUS",
+      "expected_requires_review": true,
+      "expected_initial_status": "PENDING",
+      "expected_priority": "HIGH",
+      "expected_primary_action_type": "REVIEW_EVIDENCE",
+      "case_input": {
+        "case_id": "DAY14-03-AMBIGUOUS-TRANSACTION",
+        "evidence": [
+          {
+            "id": "EVID-1403",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1403.pdf",
+            "raw_payload": "Invoice for INR 40,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1403",
+            "evidence_id": "EVID-1403",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 40000.0
+          }
+        ],
+        "transactions": [
+          {"id": "TXN-1403A", "amount": 40000.0, "direction": "CREDIT"},
+          {"id": "TXN-1403B", "amount": 40000.0, "direction": "CREDIT"}
+        ],
+        "metadata": {
+          "precomputed_match_relationships": [
+            {
+              "id": "MAT-1403",
+              "relationship_type": "ONE_TO_ONE",
+              "status": "AMBIGUOUS",
+              "source_claim_ids": ["CLM-1403"],
+              "target_transaction_ids": ["TXN-1403A", "TXN-1403B"],
+              "matched_amount": 40000.0,
+              "target_amount": 40000.0,
+              "score": 0.80,
+              "explanation": "Multiple identical transaction candidates"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY14-04-AMOUNT-CONTRADICTION",
+      "description": "Invoice for INR 20,000 contradicts bank credit of INR 18,000 -> Review PENDING (HIGH)",
+      "expected_deterministic_status": "CONTRADICTED",
+      "expected_requires_review": true,
+      "expected_initial_status": "PENDING",
+      "expected_priority": "HIGH",
+      "expected_primary_action_type": "INVESTIGATE_CONTRADICTION",
+      "case_input": {
+        "case_id": "DAY14-04-AMOUNT-CONTRADICTION",
+        "evidence": [
+          {
+            "id": "EVID-1404",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1404.pdf",
+            "raw_payload": "Invoice for INR 20,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1404",
+            "evidence_id": "EVID-1404",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 20000.0,
+            "reference_id_hint": "408219381920"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1404",
+            "amount": 18000.0,
+            "direction": "CREDIT",
+            "bank_reference": "408219381920"
+          }
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1404",
+              "discrepancy_type": "AMOUNT_MISMATCH",
+              "severity": "ERROR",
+              "message": "Amount mismatch: expected 20000.00, observed 18000.00",
+              "expected_value": "20000.00",
+              "observed_value": "18000.00",
+              "involved_claim_ids": ["CLM-1404"],
+              "involved_transaction_ids": ["TXN-1404"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY14-05-ENTITY-CONTRADICTION",
+      "description": "Invoice issued to Rahul Kumar matches payment deposited by Rohit Sharma -> Review PENDING (CRITICAL)",
+      "expected_deterministic_status": "CONTRADICTED",
+      "expected_requires_review": true,
+      "expected_initial_status": "PENDING",
+      "expected_priority": "CRITICAL",
+      "expected_primary_action_type": "VERIFY_ENTITY",
+      "case_input": {
+        "case_id": "DAY14-05-ENTITY-CONTRADICTION",
+        "evidence": [
+          {
+            "id": "EVID-1405",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1405.pdf",
+            "raw_payload": "Invoice for INR 25,000 to Rahul Kumar"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1405",
+            "evidence_id": "EVID-1405",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 25000.0,
+            "counterparty_hint": "Rahul Kumar"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1405",
+            "amount": 25000.0,
+            "direction": "CREDIT",
+            "origin_entity_id": "ENT-ROHIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1405",
+              "discrepancy_type": "ENTITY_MISMATCH",
+              "severity": "CRITICAL",
+              "message": "Entity mismatch: expected Rahul Kumar, observed Rohit Sharma",
+              "expected_value": "Rahul Kumar",
+              "observed_value": "Rohit Sharma",
+              "involved_claim_ids": ["CLM-1405"],
+              "involved_transaction_ids": ["TXN-1405"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY14-06-PARTIAL-SETTLEMENT",
+      "description": "Invoice for INR 20,000 with partial payment of INR 12,000 -> Review PENDING (MEDIUM)",
+      "expected_deterministic_status": "PARTIALLY_SETTLED",
+      "expected_requires_review": true,
+      "expected_initial_status": "PENDING",
+      "expected_priority": "MEDIUM",
+      "expected_primary_action_type": "VERIFY_TRANSACTION",
+      "case_input": {
+        "case_id": "DAY14-06-PARTIAL-SETTLEMENT",
+        "evidence": [
+          {
+            "id": "EVID-1406",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1406.pdf",
+            "raw_payload": "Invoice for INR 20,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1406",
+            "evidence_id": "EVID-1406",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 20000.0
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1406",
+            "amount": 12000.0,
+            "direction": "CREDIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_match_relationships": [
+            {
+              "id": "MAT-1406",
+              "relationship_type": "PARTIAL",
+              "status": "MATCHED",
+              "source_claim_ids": ["CLM-1406"],
+              "target_transaction_ids": ["TXN-1406"],
+              "matched_amount": 12000.0,
+              "target_amount": 20000.0,
+              "score": 0.95,
+              "explanation": "Partial milestone settlement"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY14-07-MISSING-EVIDENCE",
+      "description": "WhatsApp chat claims payment was sent but no transaction record exists -> Review PENDING (MEDIUM)",
+      "expected_deterministic_status": "UNVERIFIABLE",
+      "expected_requires_review": true,
+      "expected_initial_status": "PENDING",
+      "expected_priority": "MEDIUM",
+      "expected_primary_action_type": "REQUEST_EVIDENCE",
+      "case_input": {
+        "case_id": "DAY14-07-MISSING-EVIDENCE",
+        "raw_text_messages": [
+          {
+            "text": "Bhai ₹15,000 bhej diya check karo",
+            "source_name": "chat.txt"
+          }
+        ],
+        "transactions": []
+      }
+    },
+    {
+      "case_id": "DAY14-08-MULTI-ISSUE",
+      "description": "Multiple simultaneous discrepancies: amount mismatch and conflicting claim -> Review PENDING (HIGH)",
+      "expected_deterministic_status": "CONTRADICTED",
+      "expected_requires_review": true,
+      "expected_initial_status": "PENDING",
+      "expected_priority": "HIGH",
+      "expected_primary_action_type": "INVESTIGATE_CONTRADICTION",
+      "case_input": {
+        "case_id": "DAY14-08-MULTI-ISSUE",
+        "evidence": [
+          {
+            "id": "EVID-1408",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1408.pdf",
+            "raw_payload": "Invoice for INR 50,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1408",
+            "evidence_id": "EVID-1408",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 50000.0
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1408",
+            "amount": 45000.0,
+            "direction": "CREDIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1408A",
+              "discrepancy_type": "AMOUNT_MISMATCH",
+              "severity": "ERROR",
+              "message": "Amount mismatch: expected 50000.00, observed 45000.00",
+              "expected_value": "50000.00",
+              "observed_value": "45000.00",
+              "involved_claim_ids": ["CLM-1408"],
+              "involved_transaction_ids": ["TXN-1408"]
+            },
+            {
+              "id": "DISC-1408B",
+              "discrepancy_type": "CONFLICTING_CLAIMS",
+              "severity": "ERROR",
+              "message": "Conflicting customer statements regarding discount",
+              "involved_claim_ids": ["CLM-1408"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY14-09-AUDIT-TAMPERING",
+      "description": "Validation scenario testing cryptographic hash-chain detection when an event is tampered with.",
+      "expected_deterministic_status": "CONTRADICTED",
+      "expected_requires_review": true,
+      "expected_initial_status": "PENDING",
+      "expected_priority": "HIGH",
+      "case_input": {
+        "case_id": "DAY14-09-AUDIT-TAMPERING",
+        "evidence": [
+          {
+            "id": "EVID-1409",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1409.pdf",
+            "raw_payload": "Invoice for INR 20,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1409",
+            "evidence_id": "EVID-1409",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 20000.0
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1409",
+            "amount": 19000.0,
+            "direction": "CREDIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1409",
+              "discrepancy_type": "AMOUNT_MISMATCH",
+              "severity": "ERROR",
+              "message": "Amount mismatch: expected 20000.00, observed 19000.00",
+              "expected_value": "20000.00",
+              "observed_value": "19000.00",
+              "involved_claim_ids": ["CLM-1409"],
+              "involved_transaction_ids": ["TXN-1409"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY14-10-HUMAN-DECISION-SEPARATION",
+      "description": "Human decision CONFIRMED on a CONTRADICTED case preserves deterministic CONTRADICTED status.",
+      "expected_deterministic_status": "CONTRADICTED",
+      "expected_requires_review": true,
+      "expected_initial_status": "PENDING",
+      "expected_priority": "CRITICAL",
+      "case_input": {
+        "case_id": "DAY14-10-HUMAN-DECISION-SEPARATION",
+        "evidence": [
+          {
+            "id": "EVID-1410",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1410.pdf",
+            "raw_payload": "Invoice for INR 30,000 to Rahul Kumar"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1410",
+            "evidence_id": "EVID-1410",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 30000.0,
+            "counterparty_hint": "Rahul Kumar"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1410",
+            "amount": 30000.0,
+            "direction": "CREDIT",
+            "origin_entity_id": "ENT-ROHIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1410",
+              "discrepancy_type": "ENTITY_MISMATCH",
+              "severity": "CRITICAL",
+              "message": "Entity mismatch: expected Rahul Kumar, observed Rohit Sharma",
+              "expected_value": "Rahul Kumar",
+              "observed_value": "Rohit Sharma",
+              "involved_claim_ids": ["CLM-1410"],
+              "involved_transaction_ids": ["TXN-1410"]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

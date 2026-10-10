@@ -1,0 +1,6 @@
+Date,Narration,Amount,Ref
+15/08/2026,Valid Row 1,10000.00,REF101
+16/08/2026,Malformed Row with too many columns,20000.00,REF102,EXTRA_COLUMN_HERE
+17/08/2026,Valid Row 3,30000.00,REF103
+18/08/2026
+19/08/2026,Valid Row 5,50000.00,REF105

@@ -1,0 +1,645 @@
+{
+  "dataset_version": "DAY18-CROSS-CASE-v1",
+  "description": "12 deterministic test scenarios evaluating cross-case intelligence, counterparty memory, reference reuse, and truth immutability.",
+  "test_cases": [
+    {
+      "case_id": "DAY18-01-FIRST-TIME",
+      "scenario_type": "FIRST_TIME_COUNTERPARTY",
+      "description": "Clean single invoice and transaction for a brand new counterparty with zero prior history.",
+      "evidence": [
+        {
+          "id": "EV-D18-01-1",
+          "modality": "INVOICE",
+          "source_name": "Invoice_FreshVendor.txt",
+          "source_type": "MANUAL_UPLOAD",
+          "raw_payload": "INVOICE #FV-101\nVendor: Fresh Bloom Florals\nAmount: INR 12,000.00\nDate: 2026-08-01\nGSTIN: 27AABCF1234F1Z1"
+        },
+        {
+          "id": "EV-D18-01-2",
+          "modality": "BANK_STATEMENT",
+          "source_name": "Bank_Aug2026.csv",
+          "source_type": "BANK_CSV",
+          "raw_payload": "Date,Amount,Type,Reference,Description\n2026-08-02,12000.00,CREDIT,UTR-FV-001,NEFT Fresh Bloom Florals"
+        }
+      ],
+      "claims": [
+        {
+          "id": "CLM-D18-01-1",
+          "evidence_id": "EV-D18-01-1",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 12000.0,
+          "reference_id_hint": "UTR-FV-001",
+          "counterparty_hint": "Fresh Bloom Florals"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-D18-01-1",
+          "amount": 12000.0,
+          "direction": "CREDIT",
+          "bank_reference": "UTR-FV-001",
+          "evidence_ids": ["EV-D18-01-2"]
+        }
+      ],
+      "entities": [
+        {
+          "id": "ENT-D18-01",
+          "canonical_name": "Fresh Bloom Florals",
+          "aliases": ["Fresh Bloom"],
+          "gstin": "27AABCF1234F1Z1",
+          "confidence": 1.0
+        }
+      ],
+      "expected_output": {
+        "counterparty_name": "Fresh Bloom Florals",
+        "expected_case_count": 1,
+        "is_repeat_counterparty": false,
+        "has_reference_reuse": false,
+        "has_historical_contradiction": false
+      }
+    },
+    {
+      "case_id": "DAY18-02-REPEAT-COUNTERPARTY",
+      "scenario_type": "REPEATED_COUNTERPARTY",
+      "description": "Case involving Creative Minds Studio establishing repeat counterparty pattern.",
+      "evidence": [
+        {
+          "id": "EV-D18-02-1",
+          "modality": "INVOICE",
+          "source_name": "Invoice_CMS_2.txt",
+          "source_type": "MANUAL_UPLOAD",
+          "raw_payload": "INVOICE #CMS-202\nVendor: Creative Minds Studio\nAmount: INR 35,000.00\nDate: 2026-08-05"
+        },
+        {
+          "id": "EV-D18-02-2",
+          "modality": "BANK_STATEMENT",
+          "source_name": "Bank_Aug2026.csv",
+          "source_type": "BANK_CSV",
+          "raw_payload": "Date,Amount,Type,Reference,Description\n2026-08-06,35000.00,CREDIT,UTR-CMS-002,IMPS Creative Minds"
+        }
+      ],
+      "claims": [
+        {
+          "id": "CLM-D18-02-1",
+          "evidence_id": "EV-D18-02-1",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 35000.0,
+          "reference_id_hint": "UTR-CMS-002",
+          "counterparty_hint": "Creative Minds Studio"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-D18-02-1",
+          "amount": 35000.0,
+          "direction": "CREDIT",
+          "bank_reference": "UTR-CMS-002",
+          "evidence_ids": ["EV-D18-02-2"]
+        }
+      ],
+      "entities": [
+        {
+          "id": "ENT-D18-CMS-1",
+          "canonical_name": "Creative Minds Studio",
+          "aliases": ["Creative Minds"],
+          "confidence": 1.0
+        }
+      ],
+      "expected_output": {
+        "counterparty_name": "Creative Minds Studio",
+        "expected_min_cases": 1,
+        "is_repeat_counterparty": true,
+        "has_reference_reuse": false
+      }
+    },
+    {
+      "case_id": "DAY18-03-HIGH-EXPOSURE",
+      "scenario_type": "HIGH_HISTORICAL_EXPOSURE",
+      "description": "Large value case pushing cumulative lifetime volume above INR 1,00,000 for Creative Minds Studio.",
+      "evidence": [
+        {
+          "id": "EV-D18-03-1",
+          "modality": "INVOICE",
+          "source_name": "Invoice_CMS_Large.txt",
+          "source_type": "MANUAL_UPLOAD",
+          "raw_payload": "INVOICE #CMS-303\nVendor: Creative Minds Studio\nAmount: INR 90,000.00\nDate: 2026-08-10"
+        },
+        {
+          "id": "EV-D18-03-2",
+          "modality": "BANK_STATEMENT",
+          "source_name": "Bank_Aug2026.csv",
+          "source_type": "BANK_CSV",
+          "raw_payload": "Date,Amount,Type,Reference,Description\n2026-08-11,90000.00,CREDIT,UTR-CMS-003,RTGS Creative Minds"
+        }
+      ],
+      "claims": [
+        {
+          "id": "CLM-D18-03-1",
+          "evidence_id": "EV-D18-03-1",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 90000.0,
+          "reference_id_hint": "UTR-CMS-003",
+          "counterparty_hint": "Creative Minds Studio"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-D18-03-1",
+          "amount": 90000.0,
+          "direction": "CREDIT",
+          "bank_reference": "UTR-CMS-003",
+          "evidence_ids": ["EV-D18-03-2"]
+        }
+      ],
+      "entities": [
+        {
+          "id": "ENT-D18-CMS-2",
+          "canonical_name": "Creative Minds Studio",
+          "aliases": ["Creative Minds"],
+          "confidence": 1.0
+        }
+      ],
+      "expected_output": {
+        "counterparty_name": "Creative Minds Studio",
+        "expected_min_exposure": 125000.00,
+        "triggers_high_exposure_signal": true
+      }
+    },
+    {
+      "case_id": "DAY18-04-REPEAT-CONTRADICTION",
+      "scenario_type": "REPEATED_CONTRADICTION",
+      "description": "Case with contradictory claims for an entity with prior contradiction history.",
+      "evidence": [
+        {
+          "id": "EV-D18-04-1",
+          "modality": "INVOICE",
+          "source_name": "Invoice_DisputeCo_1.txt",
+          "source_type": "MANUAL_UPLOAD",
+          "raw_payload": "INVOICE #DC-401\nVendor: Dispute Enterprises\nAmount: INR 50,000.00\nDate: 2026-08-12"
+        },
+        {
+          "id": "EV-D18-04-2",
+          "modality": "MESSAGING_CHAT",
+          "source_name": "WhatsApp_Chat.txt",
+          "source_type": "WHATSAPP_EXPORT",
+          "raw_payload": "Vendor claims only INR 30,000 was approved for Invoice DC-401."
+        }
+      ],
+      "claims": [
+        {
+          "id": "CLM-D18-04-1",
+          "evidence_id": "EV-D18-04-1",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 50000.0,
+          "reference_id_hint": "INV-DC-401",
+          "counterparty_hint": "Dispute Enterprises"
+        },
+        {
+          "id": "CLM-D18-04-2",
+          "evidence_id": "EV-D18-04-2",
+          "claim_type": "PAYMENT_SENT",
+          "claimed_amount": 30000.0,
+          "reference_id_hint": "INV-DC-401",
+          "counterparty_hint": "Dispute Enterprises"
+        }
+      ],
+      "transactions": [],
+      "entities": [
+        {
+          "id": "ENT-D18-DC-1",
+          "canonical_name": "Dispute Enterprises",
+          "aliases": ["Dispute Ent"],
+          "confidence": 1.0
+        }
+      ],
+      "expected_output": {
+        "counterparty_name": "Dispute Enterprises",
+        "expected_status": "CONTRADICTED",
+        "historical_contradiction_signal": true
+      }
+    },
+    {
+      "case_id": "DAY18-05-RECURRING-AMOUNT-MISMATCH",
+      "scenario_type": "RECURRING_AMOUNT_MISMATCH",
+      "description": "Second case with amount mismatch for Dispute Enterprises triggering pattern detection.",
+      "evidence": [
+        {
+          "id": "EV-D18-05-1",
+          "modality": "INVOICE",
+          "source_name": "Invoice_DisputeCo_2.txt",
+          "source_type": "MANUAL_UPLOAD",
+          "raw_payload": "INVOICE #DC-502\nVendor: Dispute Enterprises\nAmount: INR 45,000.00\nDate: 2026-08-15"
+        },
+        {
+          "id": "EV-D18-05-2",
+          "modality": "BANK_STATEMENT",
+          "source_name": "Bank_Aug2026.csv",
+          "source_type": "BANK_CSV",
+          "raw_payload": "Date,Amount,Type,Reference,Description\n2026-08-16,40000.00,CREDIT,UTR-DC-005,NEFT Dispute Ent"
+        }
+      ],
+      "claims": [
+        {
+          "id": "CLM-D18-05-1",
+          "evidence_id": "EV-D18-05-1",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 45000.0,
+          "reference_id_hint": "UTR-DC-005",
+          "counterparty_hint": "Dispute Enterprises"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-D18-05-1",
+          "amount": 40000.0,
+          "direction": "CREDIT",
+          "bank_reference": "UTR-DC-005",
+          "evidence_ids": ["EV-D18-05-2"]
+        }
+      ],
+      "entities": [
+        {
+          "id": "ENT-D18-DC-2",
+          "canonical_name": "Dispute Enterprises",
+          "aliases": ["Dispute Ent"],
+          "confidence": 1.0
+        }
+      ],
+      "expected_output": {
+        "counterparty_name": "Dispute Enterprises",
+        "recurring_discrepancy_type": "AMOUNT_MISMATCH",
+        "discrepancy_min_occurrences": 1
+      }
+    },
+    {
+      "case_id": "DAY18-06-REFERENCE-REUSE",
+      "scenario_type": "REFERENCE_REUSE",
+      "description": "Case citing previously used UTR 'UTR-CMS-002' from DAY18-02 triggering duplicate warning.",
+      "evidence": [
+        {
+          "id": "EV-D18-06-1",
+          "modality": "INVOICE",
+          "source_name": "Invoice_DoubleClaim.txt",
+          "source_type": "MANUAL_UPLOAD",
+          "raw_payload": "INVOICE #DC-601\nVendor: Secondary Partner\nAmount: INR 35,000.00\nDate: 2026-08-18"
+        },
+        {
+          "id": "EV-D18-06-2",
+          "modality": "BANK_STATEMENT",
+          "source_name": "Bank_Aug2026.csv",
+          "source_type": "BANK_CSV",
+          "raw_payload": "Date,Amount,Type,Reference,Description\n2026-08-06,35000.00,CREDIT,UTR-CMS-002,IMPS Creative Minds"
+        }
+      ],
+      "claims": [
+        {
+          "id": "CLM-D18-06-1",
+          "evidence_id": "EV-D18-06-1",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 35000.0,
+          "reference_id_hint": "UTR-CMS-002",
+          "counterparty_hint": "Secondary Partner"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-D18-06-1",
+          "amount": 35000.0,
+          "direction": "CREDIT",
+          "bank_reference": "UTR-CMS-002",
+          "evidence_ids": ["EV-D18-06-2"]
+        }
+      ],
+      "entities": [
+        {
+          "id": "ENT-D18-SEC",
+          "canonical_name": "Secondary Partner",
+          "aliases": [],
+          "confidence": 1.0
+        }
+      ],
+      "expected_output": {
+        "reused_reference": "UTR-CMS-002",
+        "expected_reuse_warning": true,
+        "related_case_id": "DAY18-02-REPEAT-COUNTERPARTY"
+      }
+    },
+    {
+      "case_id": "DAY18-07-MULTI-RELATED",
+      "scenario_type": "MULTIPLE_RELATED_CASES",
+      "description": "Case sharing both entity name 'Creative Minds Studio' and bank reference with previous cases.",
+      "evidence": [
+        {
+          "id": "EV-D18-07-1",
+          "modality": "INVOICE",
+          "source_name": "Invoice_CMS_701.txt",
+          "source_type": "MANUAL_UPLOAD",
+          "raw_payload": "INVOICE #CMS-701\nVendor: Creative Minds Studio\nAmount: INR 35,000.00\nDate: 2026-08-20"
+        },
+        {
+          "id": "EV-D18-07-2",
+          "modality": "BANK_STATEMENT",
+          "source_name": "Bank_Aug2026.csv",
+          "source_type": "BANK_CSV",
+          "raw_payload": "Date,Amount,Type,Reference,Description\n2026-08-06,35000.00,CREDIT,UTR-CMS-002,IMPS Creative Minds"
+        }
+      ],
+      "claims": [
+        {
+          "id": "CLM-D18-07-1",
+          "evidence_id": "EV-D18-07-1",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 35000.0,
+          "reference_id_hint": "UTR-CMS-002",
+          "counterparty_hint": "Creative Minds Studio"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-D18-07-1",
+          "amount": 35000.0,
+          "direction": "CREDIT",
+          "bank_reference": "UTR-CMS-002",
+          "evidence_ids": ["EV-D18-07-2"]
+        }
+      ],
+      "entities": [
+        {
+          "id": "ENT-D18-CMS-3",
+          "canonical_name": "Creative Minds Studio",
+          "aliases": ["Creative Minds"],
+          "confidence": 1.0
+        }
+      ],
+      "expected_output": {
+        "expected_min_correlations": 2,
+        "shared_entity": "Creative Minds Studio",
+        "shared_reference": "UTR-CMS-002"
+      }
+    },
+    {
+      "case_id": "DAY18-08-NO-MATCH",
+      "scenario_type": "NO_HISTORICAL_MATCH",
+      "description": "Isolated case with completely unique entity and unique UTR producing clean empty history.",
+      "evidence": [
+        {
+          "id": "EV-D18-08-1",
+          "modality": "INVOICE",
+          "source_name": "Invoice_UniqueVendor.txt",
+          "source_type": "MANUAL_UPLOAD",
+          "raw_payload": "INVOICE #UV-801\nVendor: Zenith Cloud Sol\nAmount: INR 8,500.00\nDate: 2026-08-21"
+        },
+        {
+          "id": "EV-D18-08-2",
+          "modality": "BANK_STATEMENT",
+          "source_name": "Bank_Aug2026.csv",
+          "source_type": "BANK_CSV",
+          "raw_payload": "Date,Amount,Type,Reference,Description\n2026-08-22,8500.00,CREDIT,UTR-ZEN-888,NEFT Zenith Cloud"
+        }
+      ],
+      "claims": [
+        {
+          "id": "CLM-D18-08-1",
+          "evidence_id": "EV-D18-08-1",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 8500.0,
+          "reference_id_hint": "UTR-ZEN-888",
+          "counterparty_hint": "Zenith Cloud Sol"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-D18-08-1",
+          "amount": 8500.0,
+          "direction": "CREDIT",
+          "bank_reference": "UTR-ZEN-888",
+          "evidence_ids": ["EV-D18-08-2"]
+        }
+      ],
+      "entities": [
+        {
+          "id": "ENT-D18-ZEN",
+          "canonical_name": "Zenith Cloud Sol",
+          "aliases": [],
+          "confidence": 1.0
+        }
+      ],
+      "expected_output": {
+        "is_repeat_counterparty": false,
+        "has_reference_reuse": false,
+        "correlation_count": 0
+      }
+    },
+    {
+      "case_id": "DAY18-09-CROSS-CASE-ISOLATION",
+      "scenario_type": "CROSS_CASE_ISOLATION",
+      "description": "Ensures processing Case A never pollutes or alters financial arithmetic in Case B.",
+      "evidence": [
+        {
+          "id": "EV-D18-09-1",
+          "modality": "INVOICE",
+          "source_name": "Invoice_IsoCheck.txt",
+          "source_type": "MANUAL_UPLOAD",
+          "raw_payload": "INVOICE #ISO-901\nVendor: Alpha Logistics\nAmount: INR 15,000.00\nDate: 2026-08-22"
+        },
+        {
+          "id": "EV-D18-09-2",
+          "modality": "BANK_STATEMENT",
+          "source_name": "Bank_Aug2026.csv",
+          "source_type": "BANK_CSV",
+          "raw_payload": "Date,Amount,Type,Reference,Description\n2026-08-23,15000.00,CREDIT,UTR-ALP-901,NEFT Alpha Logistics"
+        }
+      ],
+      "claims": [
+        {
+          "id": "CLM-D18-09-1",
+          "evidence_id": "EV-D18-09-1",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 15000.0,
+          "reference_id_hint": "UTR-ALP-901",
+          "counterparty_hint": "Alpha Logistics"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-D18-09-1",
+          "amount": 15000.0,
+          "direction": "CREDIT",
+          "bank_reference": "UTR-ALP-901",
+          "evidence_ids": ["EV-D18-09-2"]
+        }
+      ],
+      "entities": [
+        {
+          "id": "ENT-D18-ALP",
+          "canonical_name": "Alpha Logistics",
+          "aliases": [],
+          "confidence": 1.0
+        }
+      ],
+      "expected_output": {
+        "expected_matched_amount": 15000.00,
+        "expected_status": "CONFIRMED",
+        "isolation_verified": true
+      }
+    },
+    {
+      "case_id": "DAY18-10-ALIAS-HISTORY",
+      "scenario_type": "ENTITY_ALIAS_HISTORY",
+      "description": "Counterparty appearing under known alias 'Creative Minds' links correctly to 'Creative Minds Studio'.",
+      "evidence": [
+        {
+          "id": "EV-D18-10-1",
+          "modality": "INVOICE",
+          "source_name": "Invoice_CMS_Alias.txt",
+          "source_type": "MANUAL_UPLOAD",
+          "raw_payload": "INVOICE #CMS-1001\nVendor: Creative Minds\nAmount: INR 20,000.00\nDate: 2026-08-23"
+        },
+        {
+          "id": "EV-D18-10-2",
+          "modality": "BANK_STATEMENT",
+          "source_name": "Bank_Aug2026.csv",
+          "source_type": "BANK_CSV",
+          "raw_payload": "Date,Amount,Type,Reference,Description\n2026-08-24,20000.00,CREDIT,UTR-CMS-010,NEFT Creative Minds"
+        }
+      ],
+      "claims": [
+        {
+          "id": "CLM-D18-10-1",
+          "evidence_id": "EV-D18-10-1",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 20000.0,
+          "reference_id_hint": "UTR-CMS-010",
+          "counterparty_hint": "Creative Minds"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-D18-10-1",
+          "amount": 20000.0,
+          "direction": "CREDIT",
+          "bank_reference": "UTR-CMS-010",
+          "evidence_ids": ["EV-D18-10-2"]
+        }
+      ],
+      "entities": [
+        {
+          "id": "ENT-D18-CMS-4",
+          "canonical_name": "Creative Minds Studio",
+          "aliases": ["Creative Minds"],
+          "confidence": 1.0
+        }
+      ],
+      "expected_output": {
+        "resolved_canonical_name": "Creative Minds Studio",
+        "links_to_primary_history": true
+      }
+    },
+    {
+      "case_id": "DAY18-11-MIXED-SIGNALS",
+      "scenario_type": "MIXED_HISTORICAL_SIGNALS",
+      "description": "Case with multiple mixed signals (repeat counterparty + unresolved exposure history).",
+      "evidence": [
+        {
+          "id": "EV-D18-11-1",
+          "modality": "INVOICE",
+          "source_name": "Invoice_DisputeCo_3.txt",
+          "source_type": "MANUAL_UPLOAD",
+          "raw_payload": "INVOICE #DC-1101\nVendor: Dispute Enterprises\nAmount: INR 25,000.00\nDate: 2026-08-24"
+        },
+        {
+          "id": "EV-D18-11-2",
+          "modality": "BANK_STATEMENT",
+          "source_name": "Bank_Aug2026.csv",
+          "source_type": "BANK_CSV",
+          "raw_payload": "Date,Amount,Type,Reference,Description\n2026-08-24,25000.00,CREDIT,UTR-DC-110,NEFT Dispute Ent"
+        }
+      ],
+      "claims": [
+        {
+          "id": "CLM-D18-11-1",
+          "evidence_id": "EV-D18-11-1",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 25000.0,
+          "reference_id_hint": "UTR-DC-110",
+          "counterparty_hint": "Dispute Enterprises"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-D18-11-1",
+          "amount": 25000.0,
+          "direction": "CREDIT",
+          "bank_reference": "UTR-DC-110",
+          "evidence_ids": ["EV-D18-11-2"]
+        }
+      ],
+      "entities": [
+        {
+          "id": "ENT-D18-DC-3",
+          "canonical_name": "Dispute Enterprises",
+          "aliases": ["Dispute Ent"],
+          "confidence": 1.0
+        }
+      ],
+      "expected_output": {
+        "has_multiple_risk_signals": true,
+        "signals_contain_repeat_contradiction": true
+      }
+    },
+    {
+      "case_id": "DAY18-12-TRUTH-IMMUTABILITY",
+      "scenario_type": "TRUTH_IMMUTABILITY_UNDER_INTELLIGENCE",
+      "description": "Reconciliation verdict remains strictly CONFIRMED despite counterparty having historical dispute signals.",
+      "evidence": [
+        {
+          "id": "EV-D18-12-1",
+          "modality": "INVOICE",
+          "source_name": "Invoice_DisputeCo_Clean.txt",
+          "source_type": "MANUAL_UPLOAD",
+          "raw_payload": "INVOICE #DC-1201\nVendor: Dispute Enterprises\nAmount: INR 18,000.00\nDate: 2026-08-25"
+        },
+        {
+          "id": "EV-D18-12-2",
+          "modality": "BANK_STATEMENT",
+          "source_name": "Bank_Aug2026.csv",
+          "source_type": "BANK_CSV",
+          "raw_payload": "Date,Amount,Type,Reference,Description\n2026-08-25,18000.00,CREDIT,UTR-DC-1201,NEFT Dispute Ent"
+        }
+      ],
+      "claims": [
+        {
+          "id": "CLM-D18-12-1",
+          "evidence_id": "EV-D18-12-1",
+          "claim_type": "INVOICE_ISSUED",
+          "claimed_amount": 18000.0,
+          "reference_id_hint": "UTR-DC-1201",
+          "counterparty_hint": "Dispute Enterprises"
+        }
+      ],
+      "transactions": [
+        {
+          "id": "TXN-D18-12-1",
+          "amount": 18000.0,
+          "direction": "CREDIT",
+          "bank_reference": "UTR-DC-1201",
+          "evidence_ids": ["EV-D18-12-2"]
+        }
+      ],
+      "entities": [
+        {
+          "id": "ENT-D18-DC-4",
+          "canonical_name": "Dispute Enterprises",
+          "aliases": ["Dispute Ent"],
+          "confidence": 1.0
+        }
+      ],
+      "expected_output": {
+        "expected_status": "CONFIRMED",
+        "matched_amount": 18000.00,
+        "outstanding_amount": 0.00,
+        "truth_unchanged_by_history": true
+      }
+    }
+  ]
+}

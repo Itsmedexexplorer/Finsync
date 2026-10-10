@@ -1,0 +1,579 @@
+[
+  {
+    "case_id": "DAY19-01-CLEAN-CONFIRMED-JV",
+    "scenario_type": "CLEAN_CONFIRMED_JOURNAL_VOUCHER",
+    "description": "Clean 1:1 reconciled transaction generating a balanced 2-line draft journal voucher with placeholder COA.",
+    "evidence": [
+      {
+        "id": "EV-D19-01-1",
+        "modality": "INVOICE",
+        "source_name": "inv_1.txt",
+        "source_type": "MANUAL_UPLOAD",
+        "raw_payload": "INVOICE #INV-D19-101 Vendor: Horizon Cloud Services Amount: INR 45,000.00"
+      },
+      {
+        "id": "EV-D19-01-2",
+        "modality": "BANK_STATEMENT",
+        "source_name": "bank_1.csv",
+        "source_type": "BANK_CSV",
+        "raw_payload": "Credit 45000 UTR-D19-HCS-01"
+      }
+    ],
+    "claims": [
+      {
+        "id": "CLM-D19-01-1",
+        "evidence_id": "EV-D19-01-1",
+        "claim_type": "INVOICE_ISSUED",
+        "claimed_amount": 45000.0,
+        "reference_id_hint": "UTR-D19-HCS-01",
+        "counterparty_hint": "Horizon Cloud Services"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "TXN-D19-01-1",
+        "amount": 45000.0,
+        "direction": "CREDIT",
+        "bank_reference": "UTR-D19-HCS-01",
+        "evidence_ids": ["EV-D19-01-2"]
+      }
+    ],
+    "entities": [
+      {
+        "id": "ENT-D19-01",
+        "canonical_name": "Horizon Cloud Services"
+      }
+    ],
+    "expected_remediation": {
+      "expected_status": "CONFIRMED",
+      "action_type": "DRAFT_JOURNAL_VOUCHER",
+      "expected_voucher_balanced": true,
+      "expected_total_dr": 45000.0,
+      "expected_total_cr": 45000.0,
+      "requires_account_mapping": true
+    }
+  },
+  {
+    "case_id": "DAY19-02-PARTIAL-SETTLEMENT-JV",
+    "scenario_type": "PARTIAL_SETTLEMENT_JOURNAL_VOUCHER",
+    "description": "Partial payment case generating a 3-line balanced draft voucher with shortfall allocated to unapplied debit clearing.",
+    "evidence": [
+      {
+        "id": "EV-D19-02-1",
+        "modality": "INVOICE",
+        "source_name": "inv_2.txt",
+        "source_type": "MANUAL_UPLOAD",
+        "raw_payload": "INVOICE #INV-D19-201 Vendor: Zenith Marketing Amount: INR 50,000.00"
+      },
+      {
+        "id": "EV-D19-02-2",
+        "modality": "BANK_STATEMENT",
+        "source_name": "bank_2.csv",
+        "source_type": "BANK_CSV",
+        "raw_payload": "Credit 35000 UTR-D19-ZEN-01"
+      }
+    ],
+    "claims": [
+      {
+        "id": "CLM-D19-02-1",
+        "evidence_id": "EV-D19-02-1",
+        "claim_type": "INVOICE_ISSUED",
+        "claimed_amount": 50000.0,
+        "reference_id_hint": "UTR-D19-ZEN-01",
+        "counterparty_hint": "Zenith Marketing"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "TXN-D19-02-1",
+        "amount": 35000.0,
+        "direction": "CREDIT",
+        "bank_reference": "UTR-D19-ZEN-01",
+        "evidence_ids": ["EV-D19-02-2"]
+      }
+    ],
+    "entities": [
+      {
+        "id": "ENT-D19-02",
+        "canonical_name": "Zenith Marketing"
+      }
+    ],
+    "expected_remediation": {
+      "expected_status": "PARTIAL",
+      "action_type": "DRAFT_JOURNAL_VOUCHER",
+      "expected_voucher_balanced": true,
+      "expected_total_dr": 50000.0,
+      "expected_total_cr": 50000.0
+    }
+  },
+  {
+    "case_id": "DAY19-03-CONTRADICTED-DISPUTE-NOTICE",
+    "scenario_type": "GROUNDED_VENDOR_DISPUTE_NOTICE",
+    "description": "Contradicted case proposing a grounded formal dispute letter citing invoice #, UTR, and shortfall.",
+    "evidence": [
+      {
+        "id": "EV-D19-03-1",
+        "modality": "INVOICE",
+        "source_name": "inv_3.txt",
+        "source_type": "MANUAL_UPLOAD",
+        "raw_payload": "INVOICE #INV-D19-301 Vendor: Pulse Logistics Amount: INR 60,000.00"
+      },
+      {
+        "id": "EV-D19-03-2",
+        "modality": "MESSAGING_CHAT",
+        "source_name": "chat_3.txt",
+        "source_type": "WHATSAPP_EXPORT",
+        "raw_payload": "Vendor claims only INR 40,000 was approved for Invoice INV-D19-301."
+      }
+    ],
+    "claims": [
+      {
+        "id": "CLM-D19-03-1",
+        "evidence_id": "EV-D19-03-1",
+        "claim_type": "INVOICE_ISSUED",
+        "claimed_amount": 60000.0,
+        "reference_id_hint": "INV-D19-301",
+        "counterparty_hint": "Pulse Logistics"
+      },
+      {
+        "id": "CLM-D19-03-2",
+        "evidence_id": "EV-D19-03-2",
+        "claim_type": "PAYMENT_SENT",
+        "claimed_amount": 40000.0,
+        "reference_id_hint": "INV-D19-301",
+        "counterparty_hint": "Pulse Logistics"
+      }
+    ],
+    "transactions": [],
+    "entities": [
+      {
+        "id": "ENT-D19-03",
+        "canonical_name": "Pulse Logistics"
+      }
+    ],
+    "expected_remediation": {
+      "expected_status": "CONTRADICTED",
+      "action_type": "VENDOR_DISPUTE_NOTICE",
+      "expected_disputed_amount": 20000.0,
+      "expected_cited_invoice": "INV-D19-301"
+    }
+  },
+  {
+    "case_id": "DAY19-04-PAYMENT-FOLLOWUP",
+    "scenario_type": "GROUNDED_PAYMENT_FOLLOWUP",
+    "description": "Partially settled invoice proposing a formal payment reminder draft.",
+    "evidence": [
+      {
+        "id": "EV-D19-04-1",
+        "modality": "INVOICE",
+        "source_name": "inv_4.txt",
+        "source_type": "MANUAL_UPLOAD",
+        "raw_payload": "INVOICE #INV-D19-401 Vendor: Alpha Security Amount: INR 30,000.00"
+      },
+      {
+        "id": "EV-D19-04-2",
+        "modality": "BANK_STATEMENT",
+        "source_name": "bank_4.csv",
+        "source_type": "BANK_CSV",
+        "raw_payload": "Credit 20000 UTR-D19-ALP-01"
+      }
+    ],
+    "claims": [
+      {
+        "id": "CLM-D19-04-1",
+        "evidence_id": "EV-D19-04-1",
+        "claim_type": "INVOICE_ISSUED",
+        "claimed_amount": 30000.0,
+        "reference_id_hint": "UTR-D19-ALP-01",
+        "counterparty_hint": "Alpha Security"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "TXN-D19-04-1",
+        "amount": 20000.0,
+        "direction": "CREDIT",
+        "bank_reference": "UTR-D19-ALP-01",
+        "evidence_ids": ["EV-D19-04-2"]
+      }
+    ],
+    "entities": [
+      {
+        "id": "ENT-D19-04",
+        "canonical_name": "Alpha Security"
+      }
+    ],
+    "expected_remediation": {
+      "expected_status": "PARTIAL",
+      "action_type": "PAYMENT_FOLLOWUP_DRAFT",
+      "expected_outstanding": 10000.0
+    }
+  },
+  {
+    "case_id": "DAY19-05-MISSING-EVIDENCE-REQUEST",
+    "scenario_type": "MISSING_EVIDENCE_REQUEST",
+    "description": "Unverifiable transaction proposing a missing bank proof request.",
+    "evidence": [
+      {
+        "id": "EV-D19-05-1",
+        "modality": "INVOICE",
+        "source_name": "inv_5.txt",
+        "source_type": "MANUAL_UPLOAD",
+        "raw_payload": "INVOICE #INV-D19-501 Vendor: Beta Cleaners Amount: INR 15,000.00"
+      }
+    ],
+    "claims": [
+      {
+        "id": "CLM-D19-05-1",
+        "evidence_id": "EV-D19-05-1",
+        "claim_type": "INVOICE_ISSUED",
+        "claimed_amount": 15000.0,
+        "counterparty_hint": "Beta Cleaners"
+      }
+    ],
+    "transactions": [],
+    "entities": [
+      {
+        "id": "ENT-D19-05",
+        "canonical_name": "Beta Cleaners"
+      }
+    ],
+    "expected_remediation": {
+      "expected_status": "UNVERIFIABLE",
+      "action_type": "MISSING_EVIDENCE_REQUEST"
+    }
+  },
+  {
+    "case_id": "DAY19-06-HUMAN-APPROVAL",
+    "scenario_type": "HUMAN_APPROVAL_WORKFLOW",
+    "description": "Proposes action, verifies PENDING_APPROVAL status, explicitly approves, and checks audit chain.",
+    "evidence": [
+      {
+        "id": "EV-D19-06-1",
+        "modality": "INVOICE",
+        "source_name": "inv_6.txt",
+        "source_type": "MANUAL_UPLOAD",
+        "raw_payload": "INVOICE #INV-D19-601 Vendor: Gamma Media Amount: INR 25,000.00"
+      },
+      {
+        "id": "EV-D19-06-2",
+        "modality": "BANK_STATEMENT",
+        "source_name": "bank_6.csv",
+        "source_type": "BANK_CSV",
+        "raw_payload": "Credit 25000 UTR-D19-GAM-01"
+      }
+    ],
+    "claims": [
+      {
+        "id": "CLM-D19-06-1",
+        "evidence_id": "EV-D19-06-1",
+        "claim_type": "INVOICE_ISSUED",
+        "claimed_amount": 25000.0,
+        "reference_id_hint": "UTR-D19-GAM-01",
+        "counterparty_hint": "Gamma Media"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "TXN-D19-06-1",
+        "amount": 25000.0,
+        "direction": "CREDIT",
+        "bank_reference": "UTR-D19-GAM-01",
+        "evidence_ids": ["EV-D19-06-2"]
+      }
+    ],
+    "entities": [
+      {
+        "id": "ENT-D19-06",
+        "canonical_name": "Gamma Media"
+      }
+    ],
+    "expected_remediation": {
+      "test_approval_transition": true
+    }
+  },
+  {
+    "case_id": "DAY19-07-HUMAN-REJECTION",
+    "scenario_type": "HUMAN_REJECTION_WORKFLOW",
+    "description": "Proposes action, rejects with controller note, and verifies REJECTED status in audit chain.",
+    "evidence": [
+      {
+        "id": "EV-D19-07-1",
+        "modality": "INVOICE",
+        "source_name": "inv_7.txt",
+        "source_type": "MANUAL_UPLOAD",
+        "raw_payload": "INVOICE #INV-D19-701 Vendor: Delta Supplies Amount: INR 18,000.00"
+      },
+      {
+        "id": "EV-D19-07-2",
+        "modality": "BANK_STATEMENT",
+        "source_name": "bank_7.csv",
+        "source_type": "BANK_CSV",
+        "raw_payload": "Credit 18000 UTR-D19-DEL-01"
+      }
+    ],
+    "claims": [
+      {
+        "id": "CLM-D19-07-1",
+        "evidence_id": "EV-D19-07-1",
+        "claim_type": "INVOICE_ISSUED",
+        "claimed_amount": 18000.0,
+        "reference_id_hint": "UTR-D19-DEL-01",
+        "counterparty_hint": "Delta Supplies"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "TXN-D19-07-1",
+        "amount": 18000.0,
+        "direction": "CREDIT",
+        "bank_reference": "UTR-D19-DEL-01",
+        "evidence_ids": ["EV-D19-07-2"]
+      }
+    ],
+    "entities": [
+      {
+        "id": "ENT-D19-07",
+        "canonical_name": "Delta Supplies"
+      }
+    ],
+    "expected_remediation": {
+      "test_rejection_transition": true
+    }
+  },
+  {
+    "case_id": "DAY19-08-CUSTOM-COA-MAPPING",
+    "scenario_type": "CUSTOM_COA_MAPPING",
+    "description": "Builds journal voucher using client-supplied Chart of Accounts mapping.",
+    "evidence": [
+      {
+        "id": "EV-D19-08-1",
+        "modality": "INVOICE",
+        "source_name": "inv_8.txt",
+        "source_type": "MANUAL_UPLOAD",
+        "raw_payload": "INVOICE #INV-D19-801 Vendor: Epsilon Labs Amount: INR 70,000.00"
+      },
+      {
+        "id": "EV-D19-08-2",
+        "modality": "BANK_STATEMENT",
+        "source_name": "bank_8.csv",
+        "source_type": "BANK_CSV",
+        "raw_payload": "Credit 70000 UTR-D19-EPS-01"
+      }
+    ],
+    "claims": [
+      {
+        "id": "CLM-D19-08-1",
+        "evidence_id": "EV-D19-08-1",
+        "claim_type": "INVOICE_ISSUED",
+        "claimed_amount": 70000.0,
+        "reference_id_hint": "UTR-D19-EPS-01",
+        "counterparty_hint": "Epsilon Labs"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "TXN-D19-08-1",
+        "amount": 70000.0,
+        "direction": "CREDIT",
+        "bank_reference": "UTR-D19-EPS-01",
+        "evidence_ids": ["EV-D19-08-2"]
+      }
+    ],
+    "entities": [
+      {
+        "id": "ENT-D19-08",
+        "canonical_name": "Epsilon Labs"
+      }
+    ],
+    "custom_coa": {
+      "bank_clearing": { "code": "GL-1010", "name": "HDFC Primary Current A/c" },
+      "vendor_payable": { "code": "GL-2020", "name": "Sundry Creditors - Trade" }
+    },
+    "expected_remediation": {
+      "requires_account_mapping": false,
+      "expected_dr_code": "GL-2020",
+      "expected_cr_code": "GL-1010"
+    }
+  },
+  {
+    "case_id": "DAY19-09-GROUNDING-VALIDATOR-PASS",
+    "scenario_type": "GROUNDING_VALIDATION_PASS",
+    "description": "Verifies that factually grounded notice passes validator.",
+    "evidence": [
+      {
+        "id": "EV-D19-09-1",
+        "modality": "INVOICE",
+        "source_name": "inv_9.txt",
+        "source_type": "MANUAL_UPLOAD",
+        "raw_payload": "INVOICE #INV-D19-901 Vendor: Zeta Tech Amount: INR 12,000.00"
+      },
+      {
+        "id": "EV-D19-09-2",
+        "modality": "BANK_STATEMENT",
+        "source_name": "bank_9.csv",
+        "source_type": "BANK_CSV",
+        "raw_payload": "Credit 12000 UTR-D19-ZET-01"
+      }
+    ],
+    "claims": [
+      {
+        "id": "CLM-D19-09-1",
+        "evidence_id": "EV-D19-09-1",
+        "claim_type": "INVOICE_ISSUED",
+        "claimed_amount": 12000.0,
+        "reference_id_hint": "UTR-D19-ZET-01",
+        "counterparty_hint": "Zeta Tech"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "TXN-D19-09-1",
+        "amount": 12000.0,
+        "direction": "CREDIT",
+        "bank_reference": "UTR-D19-ZET-01",
+        "evidence_ids": ["EV-D19-09-2"]
+      }
+    ],
+    "entities": [
+      {
+        "id": "ENT-D19-09",
+        "canonical_name": "Zeta Tech"
+      }
+    ],
+    "expected_remediation": {
+      "validator_pass": true
+    }
+  },
+  {
+    "case_id": "DAY19-10-GROUNDING-VALIDATOR-REJECT",
+    "scenario_type": "GROUNDING_VALIDATION_REJECT",
+    "description": "Verifies validator detects and rejects fabricated / ungrounded figures.",
+    "evidence": [
+      {
+        "id": "EV-D19-10-1",
+        "modality": "INVOICE",
+        "source_name": "inv_10.txt",
+        "source_type": "MANUAL_UPLOAD",
+        "raw_payload": "INVOICE #INV-D19-1001 Vendor: Eta Legal Amount: INR 20,000.00"
+      }
+    ],
+    "claims": [
+      {
+        "id": "CLM-D19-10-1",
+        "evidence_id": "EV-D19-10-1",
+        "claim_type": "INVOICE_ISSUED",
+        "claimed_amount": 20000.0,
+        "counterparty_hint": "Eta Legal"
+      }
+    ],
+    "transactions": [],
+    "entities": [
+      {
+        "id": "ENT-D19-10",
+        "canonical_name": "Eta Legal"
+      }
+    ],
+    "expected_remediation": {
+      "test_tampered_amount_rejection": true
+    }
+  },
+  {
+    "case_id": "DAY19-11-JOURNAL-BALANCE-INVARIANT",
+    "scenario_type": "DOUBLE_ENTRY_BALANCE_CHECK",
+    "description": "Verifies mathematical DR == CR balance invariant holds strictly across voucher lines.",
+    "evidence": [
+      {
+        "id": "EV-D19-11-1",
+        "modality": "INVOICE",
+        "source_name": "inv_11.txt",
+        "source_type": "MANUAL_UPLOAD",
+        "raw_payload": "INVOICE #INV-D19-1101 Vendor: Theta Consulting Amount: INR 88,888.88"
+      },
+      {
+        "id": "EV-D19-11-2",
+        "modality": "BANK_STATEMENT",
+        "source_name": "bank_11.csv",
+        "source_type": "BANK_CSV",
+        "raw_payload": "Credit 88888.88 UTR-D19-THE-01"
+      }
+    ],
+    "claims": [
+      {
+        "id": "CLM-D19-11-1",
+        "evidence_id": "EV-D19-11-1",
+        "claim_type": "INVOICE_ISSUED",
+        "claimed_amount": 88888.88,
+        "reference_id_hint": "UTR-D19-THE-01",
+        "counterparty_hint": "Theta Consulting"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "TXN-D19-11-1",
+        "amount": 88888.88,
+        "direction": "CREDIT",
+        "bank_reference": "UTR-D19-THE-01",
+        "evidence_ids": ["EV-D19-11-2"]
+      }
+    ],
+    "entities": [
+      {
+        "id": "ENT-D19-11",
+        "canonical_name": "Theta Consulting"
+      }
+    ],
+    "expected_remediation": {
+      "double_entry_exact": true
+    }
+  },
+  {
+    "case_id": "DAY19-12-TRUTH-IMMUTABILITY",
+    "scenario_type": "FINANCIAL_TRUTH_IMMUTABILITY",
+    "description": "Verifies that proposing, approving, and rejecting remediation actions leaves reconciliation math 100% unmutated.",
+    "evidence": [
+      {
+        "id": "EV-D19-12-1",
+        "modality": "INVOICE",
+        "source_name": "inv_12.txt",
+        "source_type": "MANUAL_UPLOAD",
+        "raw_payload": "INVOICE #INV-D19-1201 Vendor: Iota Design Amount: INR 33,000.00"
+      },
+      {
+        "id": "EV-D19-12-2",
+        "modality": "BANK_STATEMENT",
+        "source_name": "bank_12.csv",
+        "source_type": "BANK_CSV",
+        "raw_payload": "Credit 33000 UTR-D19-IOT-01"
+      }
+    ],
+    "claims": [
+      {
+        "id": "CLM-D19-12-1",
+        "evidence_id": "EV-D19-12-1",
+        "claim_type": "INVOICE_ISSUED",
+        "claimed_amount": 33000.0,
+        "reference_id_hint": "UTR-D19-IOT-01",
+        "counterparty_hint": "Iota Design"
+      }
+    ],
+    "transactions": [
+      {
+        "id": "TXN-D19-12-1",
+        "amount": 33000.0,
+        "direction": "CREDIT",
+        "bank_reference": "UTR-D19-IOT-01",
+        "evidence_ids": ["EV-D19-12-2"]
+      }
+    ],
+    "entities": [
+      {
+        "id": "ENT-D19-12",
+        "canonical_name": "Iota Design"
+      }
+    ],
+    "expected_remediation": {
+      "truth_unaltered": true
+    }
+  }
+]

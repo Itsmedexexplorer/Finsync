@@ -1,0 +1,353 @@
+"""Generate Day 10 End-to-End Case Processing sample fixtures and test cases."""
+
+import json
+from pathlib import Path
+
+
+def create_day10_samples() -> None:
+    samples_dir = Path("data/samples/day10")
+    samples_dir.mkdir(parents=True, exist_ok=True)
+
+    test_cases = [
+        {
+            "case_id": "DAY10-01-CLEAN-1TO1",
+            "description": "Exact invoice + bank settlement match -> CONFIRMED",
+            "evidence": [
+                {"id": "EVID-01-INV", "modality": "INVOICE", "source_name": "inv_101.pdf", "source_type": "ZOHO_INVOICE", "raw_payload": "Invoice for INR 35,000 to Rahul Kumar"},
+                {"id": "EVID-01-BANK", "modality": "BANK_STATEMENT", "source_name": "bank_stmt.csv", "source_type": "BANK_CSV", "raw_payload": "Credit INR 35,000 UTR 408219381920"},
+            ],
+            "claims": [{
+                "id": "CLM-01",
+                "evidence_id": "EVID-01-INV",
+                "claim_type": "INVOICE_ISSUED",
+                "claimed_amount": 35000.0,
+                "reference_id_hint": "408219381920",
+                "counterparty_hint": "Rahul Kumar",
+            }],
+            "transactions": [{
+                "id": "TXN-01",
+                "amount": 35000.0,
+                "direction": "CREDIT",
+                "bank_reference": "408219381920",
+                "origin_entity_id": "ENT-001",
+                "evidence_ids": ["EVID-01-BANK"],
+            }],
+            "entities": [{
+                "id": "ENT-001",
+                "canonical_name": "Rahul Kumar",
+                "entity_type": "INDIVIDUAL",
+                "pan": "ABCDE1234F",
+                "upi_ids": ["rahul@oksbi"],
+            }],
+            "expected_status": "CONFIRMED",
+            "expected_matched_amount": 35000.0,
+            "expected_outstanding_amount": 0.0,
+        },
+        {
+            "case_id": "DAY10-02-PARTIAL-SETTLEMENT",
+            "description": "₹20,000 invoice with ₹12,000 payment -> PARTIALLY_SETTLED (Outstanding: ₹8,000)",
+            "evidence": [
+                {"id": "EVID-02-INV", "modality": "INVOICE", "source_name": "inv_102.pdf", "source_type": "ZOHO_INVOICE", "raw_payload": "Invoice for INR 20,000 to Priya Patel"},
+            ],
+            "claims": [{
+                "id": "CLM-02",
+                "evidence_id": "EVID-02-INV",
+                "claim_type": "INVOICE_ISSUED",
+                "claimed_amount": 20000.0,
+                "counterparty_hint": "Priya Patel",
+            }],
+            "transactions": [{
+                "id": "TXN-02",
+                "amount": 12000.0,
+                "direction": "CREDIT",
+                "origin_entity_id": "ENT-002",
+                "evidence_ids": ["EVID-02-BANK"],
+            }],
+            "entities": [{
+                "id": "ENT-002",
+                "canonical_name": "Priya Patel",
+                "entity_type": "INDIVIDUAL",
+            }],
+            "metadata": {
+                "claim_entity_map": {"CLM-02": "ENT-002"},
+                "precomputed_match_relationships": [{
+                    "id": "MAT-02",
+                    "relationship_type": "PARTIAL",
+                    "status": "MATCHED",
+                    "source_claim_ids": ["CLM-02"],
+                    "target_transaction_ids": ["TXN-02"],
+                    "matched_amount": 12000.0,
+                    "target_amount": 20000.0,
+                    "score": 0.95,
+                    "explanation": "Partial payment",
+                    "entity_id": "ENT-002",
+                }],
+            },
+            "expected_status": "PARTIALLY_SETTLED",
+            "expected_matched_amount": 12000.0,
+            "expected_outstanding_amount": 8000.0,
+        },
+        {
+            "case_id": "DAY10-03-AMOUNT-CONTRADICTION",
+            "description": "Invoice ₹20,000 vs Bank settlement ₹18,000 -> CONTRADICTED",
+            "evidence": [
+                {"id": "EVID-03-INV", "modality": "INVOICE", "source_name": "inv_103.pdf", "source_type": "ZOHO_INVOICE", "raw_payload": "Invoice for INR 20,000"},
+            ],
+            "claims": [{
+                "id": "CLM-03",
+                "evidence_id": "EVID-03-INV",
+                "claim_type": "INVOICE_ISSUED",
+                "claimed_amount": 20000.0,
+                "reference_id_hint": "408219381920",
+            }],
+            "transactions": [{
+                "id": "TXN-03",
+                "amount": 18000.0,
+                "direction": "CREDIT",
+                "bank_reference": "408219381920",
+                "evidence_ids": ["EVID-03-BANK"],
+            }],
+            "metadata": {
+                "precomputed_discrepancies": [{
+                    "id": "DISC-03",
+                    "discrepancy_type": "AMOUNT_MISMATCH",
+                    "severity": "ERROR",
+                    "message": "Amount mismatch: Expected 20,000 vs Bank 18,000",
+                    "expected_value": "20000.00",
+                    "observed_value": "18000.00",
+                    "involved_claim_ids": ["CLM-03"],
+                    "involved_transaction_ids": ["TXN-03"],
+                }],
+            },
+            "expected_status": "CONTRADICTED",
+            "expected_matched_amount": 18000.0,
+        },
+        {
+            "case_id": "DAY10-04-ENTITY-CONTRADICTION",
+            "description": "Claim for Rahul Kumar vs Bank credit for Rohit Sharma -> CONTRADICTED",
+            "evidence": [
+                {"id": "EVID-04-INV", "modality": "INVOICE", "source_name": "inv_104.pdf", "source_type": "ZOHO_INVOICE", "raw_payload": "Invoice for INR 25,000 to Rahul Kumar"},
+            ],
+            "claims": [{
+                "id": "CLM-04",
+                "evidence_id": "EVID-04-INV",
+                "claim_type": "INVOICE_ISSUED",
+                "claimed_amount": 25000.0,
+                "reference_id_hint": "408219381920",
+                "counterparty_hint": "Rahul Kumar",
+            }],
+            "transactions": [{
+                "id": "TXN-04",
+                "amount": 25000.0,
+                "direction": "CREDIT",
+                "bank_reference": "408219381920",
+                "origin_entity_id": "ENT-ROHIT",
+            }],
+            "metadata": {
+                "claim_entity_map": {"CLM-04": "ENT-RAHUL"},
+            },
+            "expected_status": "CONTRADICTED",
+        },
+        {
+            "case_id": "DAY10-05-AMBIGUOUS-DUPLICATES",
+            "description": "Two identical bank transactions for 1 invoice -> AMBIGUOUS",
+            "evidence": [
+                {"id": "EVID-05-INV", "modality": "INVOICE", "source_name": "inv_105.pdf", "source_type": "ZOHO_INVOICE", "raw_payload": "Invoice for INR 20,000"},
+            ],
+            "claims": [{
+                "id": "CLM-05",
+                "evidence_id": "EVID-05-INV",
+                "claim_type": "INVOICE_ISSUED",
+                "claimed_amount": 20000.0,
+            }],
+            "transactions": [
+                {"id": "TXN-05A", "amount": 20000.0, "direction": "CREDIT"},
+                {"id": "TXN-05B", "amount": 20000.0, "direction": "CREDIT"},
+            ],
+            "metadata": {
+                "precomputed_match_relationships": [{
+                    "id": "MAT-05",
+                    "relationship_type": "ONE_TO_ONE",
+                    "status": "AMBIGUOUS",
+                    "source_claim_ids": ["CLM-05"],
+                    "target_transaction_ids": ["TXN-05A", "TXN-05B"],
+                    "matched_amount": 20000.0,
+                    "target_amount": 20000.0,
+                    "score": 0.85,
+                    "explanation": "Ambiguous match",
+                }],
+            },
+            "expected_status": "AMBIGUOUS",
+        },
+        {
+            "case_id": "DAY10-06-UNVERIFIABLE-CHAT-PROMISE",
+            "description": "'I sent the money' without amount and no ledger transaction -> UNVERIFIABLE",
+            "evidence": [
+                {"id": "EVID-06-CHAT", "modality": "MESSAGING_CHAT", "source_name": "chat.txt", "source_type": "WHATSAPP_EXPORT", "raw_payload": "I sent the money bhai"},
+            ],
+            "claims": [{
+                "id": "CLM-06",
+                "evidence_id": "EVID-06-CHAT",
+                "claim_type": "PAYMENT_SENT",
+                "claimed_amount": None,
+            }],
+            "transactions": [],
+            "expected_status": "UNVERIFIABLE",
+            "expected_matched_amount": 0.0,
+        },
+        {
+            "case_id": "DAY10-07-UNMATCHED-CREDIT",
+            "description": "Standalone bank credit of ₹35,000 without invoice -> UNMATCHED",
+            "evidence": [
+                {"id": "EVID-07-BANK", "modality": "BANK_STATEMENT", "source_name": "bank.csv", "source_type": "BANK_CSV", "raw_payload": "Credit 35k"},
+            ],
+            "claims": [],
+            "transactions": [{
+                "id": "TXN-07",
+                "amount": 35000.0,
+                "direction": "CREDIT",
+                "bank_reference": "408219381920",
+            }],
+            "expected_status": "UNMATCHED",
+            "expected_matched_amount": 35000.0,
+        },
+        {
+            "case_id": "DAY10-08-CROSS-MODAL-MULTIMODAL",
+            "description": "Invoice + Bank CSV + WhatsApp + Screenshot -> CONFIRMED (1 financial event)",
+            "evidence": [
+                {"id": "EVID-08-INV", "modality": "INVOICE", "source_name": "inv.pdf", "source_type": "ZOHO_INVOICE", "raw_payload": "50k inv"},
+                {"id": "EVID-08-BANK", "modality": "BANK_STATEMENT", "source_name": "bank.csv", "source_type": "BANK_CSV", "raw_payload": "50k bank"},
+                {"id": "EVID-08-CHAT", "modality": "MESSAGING_CHAT", "source_name": "chat.txt", "source_type": "WHATSAPP_EXPORT", "raw_payload": "50k sent"},
+                {"id": "EVID-08-SS", "modality": "PAYMENT_SCREENSHOT", "source_name": "ss.png", "source_type": "MANUAL_UPLOAD", "raw_payload": "50k ss"},
+            ],
+            "claims": [
+                {"id": "CLM-08-INV", "evidence_id": "EVID-08-INV", "claim_type": "INVOICE_ISSUED", "claimed_amount": 50000.0, "reference_id_hint": "408219381920"},
+                {"id": "CLM-08-CHAT", "evidence_id": "EVID-08-CHAT", "claim_type": "PAYMENT_SENT", "claimed_amount": 50000.0, "reference_id_hint": "408219381920"},
+            ],
+            "transactions": [{
+                "id": "TXN-08",
+                "amount": 50000.0,
+                "direction": "CREDIT",
+                "bank_reference": "408219381920",
+                "evidence_ids": ["EVID-08-BANK"],
+            }],
+            "metadata": {
+                "precomputed_deduplication_groups": [{
+                    "group_id": "GRP-08",
+                    "status": "SAME_EVENT",
+                    "member_evidence_ids": ["EVID-08-INV", "EVID-08-BANK", "EVID-08-CHAT", "EVID-08-SS"],
+                    "member_claim_ids": ["CLM-08-INV", "CLM-08-CHAT"],
+                    "candidate_transaction_ids": ["TXN-08"],
+                    "explanation": "Grouped cross-modal event",
+                }],
+            },
+            "expected_status": "CONFIRMED",
+            "expected_matched_amount": 50000.0,
+            "expected_outstanding_amount": 0.0,
+        },
+        {
+            "case_id": "DAY10-09-MANY-TO-ONE-MILESTONES",
+            "description": "3 milestone payments settling 1 invoice -> CONFIRMED",
+            "evidence": [
+                {"id": "EVID-09-INV", "modality": "INVOICE", "source_name": "inv.pdf", "source_type": "ZOHO_INVOICE", "raw_payload": "20k inv"},
+            ],
+            "claims": [{
+                "id": "CLM-09",
+                "evidence_id": "EVID-09-INV",
+                "claim_type": "INVOICE_ISSUED",
+                "claimed_amount": 20000.0,
+                "counterparty_hint": "Bharat Tech",
+            }],
+            "transactions": [
+                {"id": "TXN-09A", "amount": 10000.0, "direction": "CREDIT", "origin_entity_id": "ENT-BHARAT"},
+                {"id": "TXN-09B", "amount": 5000.0, "direction": "CREDIT", "origin_entity_id": "ENT-BHARAT"},
+                {"id": "TXN-09C", "amount": 5000.0, "direction": "CREDIT", "origin_entity_id": "ENT-BHARAT"},
+            ],
+            "entities": [{
+                "id": "ENT-BHARAT",
+                "canonical_name": "Bharat Tech",
+                "entity_type": "PRIVATE_LIMITED",
+            }],
+            "metadata": {
+                "claim_entity_map": {"CLM-09": "ENT-BHARAT"},
+                "precomputed_match_relationships": [{
+                    "id": "MAT-09",
+                    "relationship_type": "MANY_TO_ONE",
+                    "status": "MATCHED",
+                    "source_claim_ids": ["CLM-09"],
+                    "target_transaction_ids": ["TXN-09A", "TXN-09B", "TXN-09C"],
+                    "matched_amount": 20000.0,
+                    "target_amount": 20000.0,
+                    "score": 0.95,
+                    "matched_signals": ["SUM_AMOUNT_MATCH", "3_ITEMS_SUM"],
+                    "explanation": "Milestone sum match",
+                    "entity_id": "ENT-BHARAT",
+                }],
+            },
+            "expected_status": "CONFIRMED",
+            "expected_matched_amount": 20000.0,
+            "expected_outstanding_amount": 0.0,
+        },
+        {
+            "case_id": "DAY10-10-ONE-TO-MANY-BULK",
+            "description": "Bulk payment settling 2 invoices -> CONFIRMED",
+            "evidence": [
+                {"id": "EVID-10-INV1", "modality": "INVOICE", "source_name": "inv1.pdf", "source_type": "ZOHO_INVOICE", "raw_payload": "10k inv"},
+                {"id": "EVID-10-INV2", "modality": "INVOICE", "source_name": "inv2.pdf", "source_type": "ZOHO_INVOICE", "raw_payload": "10k inv"},
+                {"id": "EVID-10-BANK", "modality": "BANK_STATEMENT", "source_name": "bank.csv", "source_type": "BANK_CSV", "raw_payload": "20k bulk credit"},
+            ],
+            "claims": [
+                {"id": "CLM-10A", "evidence_id": "EVID-10-INV1", "claim_type": "INVOICE_ISSUED", "claimed_amount": 10000.0},
+                {"id": "CLM-10B", "evidence_id": "EVID-10-INV2", "claim_type": "INVOICE_ISSUED", "claimed_amount": 10000.0},
+            ],
+            "transactions": [{
+                "id": "TXN-10-BULK",
+                "amount": 20000.0,
+                "direction": "CREDIT",
+                "origin_entity_id": "ENT-SHREE",
+                "evidence_ids": ["EVID-10-BANK"],
+            }],
+            "entities": [{
+                "id": "ENT-SHREE",
+                "canonical_name": "Shree Enterprises",
+                "entity_type": "PRIVATE_LIMITED",
+            }],
+            "metadata": {
+                "claim_entity_map": {"CLM-10A": "ENT-SHREE", "CLM-10B": "ENT-SHREE"},
+                "precomputed_deduplication_groups": [{
+                    "group_id": "GRP-10",
+                    "status": "SAME_EVENT",
+                    "member_evidence_ids": ["EVID-10-INV1", "EVID-10-INV2", "EVID-10-BANK"],
+                    "member_claim_ids": ["CLM-10A", "CLM-10B"],
+                    "candidate_transaction_ids": ["TXN-10-BULK"],
+                    "explanation": "Bulk settlement event",
+                }],
+                "precomputed_match_relationships": [{
+                    "id": "MAT-10",
+                    "relationship_type": "ONE_TO_MANY",
+                    "status": "MATCHED",
+                    "source_claim_ids": ["CLM-10A", "CLM-10B"],
+                    "target_transaction_ids": ["TXN-10-BULK"],
+                    "matched_amount": 20000.0,
+                    "target_amount": 20000.0,
+                    "score": 0.95,
+                    "matched_signals": ["SUM_AMOUNT_MATCH"],
+                    "explanation": "Bulk payment match",
+                    "entity_id": "ENT-SHREE",
+                }],
+            },
+            "expected_status": "CONFIRMED",
+            "expected_matched_amount": 20000.0,
+            "expected_outstanding_amount": 0.0,
+        },
+    ]
+
+    output_file = samples_dir / "case_processing_cases.json"
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump({"test_cases": test_cases}, f, indent=2, ensure_ascii=False)
+
+    print(f"Day 10 case processing cases generated at {output_file}")
+
+
+if __name__ == "__main__":
+    create_day10_samples()

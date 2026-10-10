@@ -1,0 +1,211 @@
+{
+  "_metadata": {
+    "dataset": "Day 17 — Real Multimodal Evidence Extraction Cases",
+    "version": "1.0.0",
+    "description": "Genuinely messy multimodal financial evidence for extraction evaluation. NOT part of the deterministic benchmark.",
+    "created": "2026-08-24",
+    "total_cases": 15
+  },
+  "cases": [
+    {
+      "id": "D17-001",
+      "description": "Messy WhatsApp Hinglish payment text",
+      "evidence_type": "text",
+      "raw_text": "bhai maine kal 20k bhej diya usko",
+      "language": "hinglish",
+      "expected": {
+        "has_financial_claim": true,
+        "claim_type": "PAYMENT_SENT",
+        "amount": 20000.0,
+        "counterparty_hint": null,
+        "date_hint_contains": "kal",
+        "payment_method_hint": null,
+        "amount_must_not_be_null": true
+      }
+    },
+    {
+      "id": "D17-002",
+      "description": "Hinglish with named recipient and weekday",
+      "evidence_type": "text",
+      "raw_text": "Rahul bhai ko 20 hazar UPI kiya tha Tuesday",
+      "language": "hinglish",
+      "expected": {
+        "has_financial_claim": true,
+        "claim_type": "PAYMENT_SENT",
+        "amount": 20000.0,
+        "counterparty_hint": "Rahul",
+        "date_hint_contains": "tuesday",
+        "payment_method_hint": "UPI"
+      }
+    },
+    {
+      "id": "D17-003",
+      "description": "English with reference number and relative date",
+      "evidence_type": "text",
+      "raw_text": "payment done 15k yesterday ref 92837",
+      "language": "en",
+      "expected": {
+        "has_financial_claim": true,
+        "claim_type": "PAYMENT_SENT",
+        "amount": 15000.0,
+        "reference_id_hint": "92837",
+        "date_hint_contains": "yesterday"
+      }
+    },
+    {
+      "id": "D17-004",
+      "description": "Conflicting amounts in single evidence",
+      "evidence_type": "text",
+      "raw_text": "₹25,000 sent to ABC yesterday but bank shows only 20k",
+      "language": "en",
+      "expected": {
+        "has_financial_claim": true,
+        "claim_type": "PAYMENT_SENT",
+        "amount": 25000.0,
+        "counterparty_hint": "ABC",
+        "notes": "The first explicit amount (25000) should be extracted. Conflicting amounts are a downstream contradiction detection concern."
+      }
+    },
+    {
+      "id": "D17-005",
+      "description": "Vague payment claim with no amount — correct answer is UNKNOWN amount",
+      "evidence_type": "text",
+      "raw_text": "maine usko payment kar diya tha, check once",
+      "language": "hinglish",
+      "expected": {
+        "has_financial_claim": true,
+        "claim_type": "PAYMENT_SENT",
+        "amount": null,
+        "amount_must_be_null": true,
+        "notes": "Amount is genuinely unknown. Extractor must NOT fabricate an amount."
+      }
+    },
+    {
+      "id": "D17-006",
+      "description": "UPI payment screenshot image",
+      "evidence_type": "image",
+      "fixture_file": "fixtures/upi_payment_screenshot.png",
+      "expected": {
+        "has_financial_claim": true,
+        "extraction_requires_vlm": true,
+        "notes": "Mock provider should return a claim with uncertain values. Live VLM should extract visible text from the image."
+      }
+    },
+    {
+      "id": "D17-007",
+      "description": "Bank transaction screenshot",
+      "evidence_type": "image",
+      "fixture_file": "fixtures/bank_transaction_screenshot.jpg",
+      "expected": {
+        "has_financial_claim": true,
+        "extraction_requires_vlm": true,
+        "notes": "Image evidence — actual values require VLM."
+      }
+    },
+    {
+      "id": "D17-008",
+      "description": "Invoice image",
+      "evidence_type": "image",
+      "fixture_file": "fixtures/invoice_image.png",
+      "expected": {
+        "has_financial_claim": true,
+        "extraction_requires_vlm": true,
+        "notes": "Invoice image — VLM should extract invoice number, amount, billed-to."
+      }
+    },
+    {
+      "id": "D17-009",
+      "description": "Scanned receipt PDF (no selectable text)",
+      "evidence_type": "pdf_scanned",
+      "fixture_file": "fixtures/scanned_receipt.pdf",
+      "expected": {
+        "has_financial_claim": true,
+        "is_scanned": true,
+        "extraction_requires_vlm": true,
+        "notes": "Scanned PDF — text extraction should fail, VLM extraction should be attempted."
+      }
+    },
+    {
+      "id": "D17-010",
+      "description": "Multi-page scanned invoice PDF",
+      "evidence_type": "pdf_scanned",
+      "fixture_file": "fixtures/multipage_scanned_invoice.pdf",
+      "expected": {
+        "has_financial_claim": true,
+        "is_scanned": true,
+        "extraction_requires_vlm": true,
+        "page_count": 2,
+        "notes": "Multi-page scanned PDF — should detect 2 pages and extract images."
+      }
+    },
+    {
+      "id": "D17-011",
+      "description": "Conflicting evidence — two texts describing different amounts for same payment",
+      "evidence_type": "text_pair",
+      "raw_texts": [
+        "Maine Ravi ko 15k UPI kiya tha Monday",
+        "Ravi says he received only 10k from me via UPI"
+      ],
+      "expected": {
+        "both_should_extract": true,
+        "claims_count": 2,
+        "notes": "Both should extract independently. Contradiction detection is downstream."
+      }
+    },
+    {
+      "id": "D17-012",
+      "description": "Missing fields — payment with no amount, no date, no recipient",
+      "evidence_type": "text",
+      "raw_text": "paise transfer ho gaye",
+      "language": "hinglish",
+      "expected": {
+        "has_financial_claim": true,
+        "claim_type": "PAYMENT_SENT",
+        "amount": null,
+        "counterparty_hint": null,
+        "claimed_date": null,
+        "amount_must_be_null": true,
+        "notes": "All fields genuinely unknown — extractor must preserve unknowns."
+      }
+    },
+    {
+      "id": "D17-013",
+      "description": "OCR-like noisy text",
+      "evidence_type": "text",
+      "raw_text": "Paym3nt of Rs.12,5O0 recei ved from Suni1 on 2O/O8/2O26 via UPl ref 4O82l9381920",
+      "language": "en",
+      "expected": {
+        "has_financial_claim": true,
+        "notes": "OCR noise with digit/letter substitutions. Extractor may struggle — that's acceptable. Should not hallucinate clean values."
+      }
+    },
+    {
+      "id": "D17-014",
+      "description": "Multiple evidence items describing one payment",
+      "evidence_type": "text_pair",
+      "raw_texts": [
+        "Sent 30k to Vikram via NEFT today ref NEFTN26235889012",
+        "NEFT transfer Rs 30,000 to Vikram completed. Reference: NEFTN26235889012"
+      ],
+      "expected": {
+        "both_should_extract": true,
+        "claims_count": 2,
+        "same_payment": true,
+        "amount": 30000.0,
+        "reference_id": "NEFTN26235889012",
+        "notes": "Both describe the same payment. Deduplication is downstream."
+      }
+    },
+    {
+      "id": "D17-015",
+      "description": "Evidence where correct answer is UNKNOWN — non-financial chat",
+      "evidence_type": "text",
+      "raw_text": "Good morning bhai! Kaise ho? Kal milte hain office mein.",
+      "language": "hinglish",
+      "expected": {
+        "has_financial_claim": false,
+        "notes": "Casual greeting — no financial claim should be extracted."
+      }
+    }
+  ]
+}

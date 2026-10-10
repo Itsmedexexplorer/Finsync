@@ -1,0 +1,71 @@
+"""VERITY Storage & Persistent Data Layer Subsystem (Day 16)."""
+
+from backend.storage.audit_store import AuditChainCorruptedError, PersistentAuditStore
+from backend.storage.config import StorageSettings, get_storage_settings
+from backend.storage.database import (
+    DatabaseConnection,
+    DatabaseEngine,
+    get_database_engine,
+    get_db_session,
+    reset_database_engine,
+)
+from backend.storage.models import (
+    AuditEventRecord,
+    CaseAssignmentRecord,
+    CaseRecord,
+    ClaimRecord,
+    ControllerDecisionRecord,
+    DeduplicationGroupRecord,
+    DiscrepancyRecord,
+    EntityRecord,
+    EvidenceRecord,
+    EvidenceReviewRecordModel,
+    IdempotencyRecord,
+    MatchRelationshipRecord,
+    PortfolioStateRecord,
+    ReconciliationRecordModel,
+    ReviewNoteRecord,
+    ReviewRecordModel,
+    TransactionRecord,
+    TruthReportRecord,
+)
+from backend.storage.service import (
+    StorageConflictError,
+    StorageService,
+    get_storage_service,
+    reset_storage_service,
+)
+
+__all__ = [
+    "StorageSettings",
+    "get_storage_settings",
+    "DatabaseConnection",
+    "DatabaseEngine",
+    "get_database_engine",
+    "get_db_session",
+    "reset_database_engine",
+    "CaseRecord",
+    "EvidenceRecord",
+    "ClaimRecord",
+    "EntityRecord",
+    "TransactionRecord",
+    "MatchRelationshipRecord",
+    "DeduplicationGroupRecord",
+    "DiscrepancyRecord",
+    "ReconciliationRecordModel",
+    "TruthReportRecord",
+    "ControllerDecisionRecord",
+    "ReviewRecordModel",
+    "ReviewNoteRecord",
+    "EvidenceReviewRecordModel",
+    "AuditEventRecord",
+    "CaseAssignmentRecord",
+    "PortfolioStateRecord",
+    "IdempotencyRecord",
+    "PersistentAuditStore",
+    "AuditChainCorruptedError",
+    "StorageService",
+    "StorageConflictError",
+    "get_storage_service",
+    "reset_storage_service",
+]

@@ -1,0 +1,464 @@
+{
+  "description": "Day 16 Persistent Storage, Repository Layer & Durable Audit Infrastructure Evaluation Scenarios",
+  "version": "1.0.0",
+  "test_cases": [
+    {
+      "case_id": "DAY16-01-BASIC-CASE-PERSISTENCE",
+      "scenario_type": "BASIC_PERSISTENCE",
+      "description": "Case processing output is written to persistent database and accurately reloaded",
+      "expected_status": "CONFIRMED",
+      "case_input": {
+        "case_id": "DAY16-01-BASIC-CASE-PERSISTENCE",
+        "evidence": [
+          {
+            "id": "EVID-1601",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1601.pdf",
+            "raw_payload": "Invoice for INR 45,000 to Tech Corp"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1601",
+            "evidence_id": "EVID-1601",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 45000.0,
+            "reference_id_hint": "UTR-1601"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1601",
+            "amount": 45000.0,
+            "direction": "CREDIT",
+            "bank_reference": "UTR-1601"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "DAY16-02-EVIDENCE-IMMUTABILITY",
+      "scenario_type": "EVIDENCE_IMMUTABILITY",
+      "description": "Ingested raw evidence record and SHA-256 fingerprint remain immutable in storage",
+      "expected_status": "CONFIRMED",
+      "case_input": {
+        "case_id": "DAY16-02-EVIDENCE-IMMUTABILITY",
+        "evidence": [
+          {
+            "id": "EVID-1602",
+            "modality": "BANK_STATEMENT",
+            "source_type": "BANK_CSV",
+            "source_name": "bank_1602.csv",
+            "raw_payload": "CR INR 12,000 UTR-1602"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1602",
+            "evidence_id": "EVID-1602",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 12000.0,
+            "reference_id_hint": "UTR-1602"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1602",
+            "amount": 12000.0,
+            "direction": "CREDIT",
+            "bank_reference": "UTR-1602"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "DAY16-03-REVIEW-PERSISTENCE",
+      "scenario_type": "REVIEW_PERSISTENCE",
+      "description": "Human review notes, evidence inspections, and resolution status survive database reload",
+      "expected_status": "CONTRADICTED",
+      "case_input": {
+        "case_id": "DAY16-03-REVIEW-PERSISTENCE",
+        "evidence": [
+          {
+            "id": "EVID-1603",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1603.pdf",
+            "raw_payload": "Invoice for INR 20,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1603",
+            "evidence_id": "EVID-1603",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 20000.0
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1603",
+            "amount": 18000.0,
+            "direction": "CREDIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1603",
+              "discrepancy_type": "AMOUNT_MISMATCH",
+              "severity": "ERROR",
+              "message": "Amount mismatch: expected 20000, observed 18000",
+              "expected_value": "20000",
+              "observed_value": "18000",
+              "involved_claim_ids": ["CLM-1603"],
+              "involved_transaction_ids": ["TXN-1603"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY16-04-PORTFOLIO-PERSISTENCE",
+      "scenario_type": "PORTFOLIO_PERSISTENCE",
+      "description": "Portfolio operational state (assignment, priority, SLA deadline) survives reload",
+      "expected_status": "CONTRADICTED",
+      "case_input": {
+        "case_id": "DAY16-04-PORTFOLIO-PERSISTENCE",
+        "evidence": [
+          {
+            "id": "EVID-1604",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1604.pdf",
+            "raw_payload": "Invoice for INR 50,000 to Rahul Kumar"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1604",
+            "evidence_id": "EVID-1604",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 50000.0
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1604",
+            "amount": 50000.0,
+            "direction": "CREDIT",
+            "origin_entity_id": "ENT-ROHIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_discrepancies": [
+            {
+              "id": "DISC-1604",
+              "discrepancy_type": "ENTITY_MISMATCH",
+              "severity": "CRITICAL",
+              "message": "Entity mismatch",
+              "expected_value": "Rahul Kumar",
+              "observed_value": "Rohit Sharma",
+              "involved_claim_ids": ["CLM-1604"],
+              "involved_transaction_ids": ["TXN-1604"]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case_id": "DAY16-05-AUDIT-PERSISTENCE",
+      "scenario_type": "AUDIT_PERSISTENCE",
+      "description": "Hash-chained audit events survive reload and verify with 100% cryptographic integrity",
+      "expected_status": "CONFIRMED",
+      "case_input": {
+        "case_id": "DAY16-05-AUDIT-PERSISTENCE",
+        "evidence": [
+          {
+            "id": "EVID-1605",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1605.pdf",
+            "raw_payload": "Invoice for INR 15,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1605",
+            "evidence_id": "EVID-1605",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 15000.0,
+            "reference_id_hint": "REF-1605"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1605",
+            "amount": 15000.0,
+            "direction": "CREDIT",
+            "bank_reference": "REF-1605"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "DAY16-06-AUDIT-TAMPER-DETECTION",
+      "scenario_type": "AUDIT_TAMPER_DETECTION",
+      "description": "Direct modification of an audit event in the database fails verification",
+      "expected_status": "CONFIRMED",
+      "case_input": {
+        "case_id": "DAY16-06-AUDIT-TAMPER-DETECTION",
+        "evidence": [
+          {
+            "id": "EVID-1606",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1606.pdf",
+            "raw_payload": "Invoice for INR 30,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1606",
+            "evidence_id": "EVID-1606",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 30000.0,
+            "reference_id_hint": "REF-1606"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1606",
+            "amount": 30000.0,
+            "direction": "CREDIT",
+            "bank_reference": "REF-1606"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "DAY16-07-TRANSACTION-ROLLBACK",
+      "scenario_type": "TRANSACTION_ROLLBACK",
+      "description": "Simulated mid-stream failure during case persistence rolls back all database records",
+      "expected_status": "CONFIRMED",
+      "case_input": {
+        "case_id": "DAY16-07-TRANSACTION-ROLLBACK",
+        "evidence": [
+          {
+            "id": "EVID-1607",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1607.pdf",
+            "raw_payload": "Invoice for INR 22,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1607",
+            "evidence_id": "EVID-1607",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 22000.0,
+            "reference_id_hint": "REF-1607"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1607",
+            "amount": 22000.0,
+            "direction": "CREDIT",
+            "bank_reference": "REF-1607"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "DAY16-08-IDEMPOTENT-CASE-PROCESSING",
+      "scenario_type": "IDEMPOTENT_PROCESSING",
+      "description": "Re-submitting the same case execution request produces no duplicate database rows",
+      "expected_status": "CONFIRMED",
+      "case_input": {
+        "case_id": "DAY16-08-IDEMPOTENT-CASE-PROCESSING",
+        "evidence": [
+          {
+            "id": "EVID-1608",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1608.pdf",
+            "raw_payload": "Invoice for INR 18,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1608",
+            "evidence_id": "EVID-1608",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 18000.0,
+            "reference_id_hint": "REF-1608"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1608",
+            "amount": 18000.0,
+            "direction": "CREDIT",
+            "bank_reference": "REF-1608"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "DAY16-09-IDEMPOTENCY-CONFLICT",
+      "scenario_type": "IDEMPOTENCY_CONFLICT",
+      "description": "Reusing an idempotency key with conflicting request content is rejected with conflict error",
+      "expected_status": "CONFIRMED",
+      "case_input": {
+        "case_id": "DAY16-09-IDEMPOTENCY-CONFLICT",
+        "evidence": [
+          {
+            "id": "EVID-1609",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1609.pdf",
+            "raw_payload": "Invoice for INR 25,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1609",
+            "evidence_id": "EVID-1609",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 25000.0,
+            "reference_id_hint": "REF-1609"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1609",
+            "amount": 25000.0,
+            "direction": "CREDIT",
+            "bank_reference": "REF-1609"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "DAY16-10-CROSS-CASE-ISOLATION",
+      "scenario_type": "CROSS_CASE_ISOLATION",
+      "description": "Queries for Case A cannot return or modify records belonging to Case B",
+      "expected_status": "CONFIRMED",
+      "case_input": {
+        "case_id": "DAY16-10-CROSS-CASE-ISOLATION",
+        "evidence": [
+          {
+            "id": "EVID-1610",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1610.pdf",
+            "raw_payload": "Invoice for INR 35,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1610",
+            "evidence_id": "EVID-1610",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 35000.0,
+            "reference_id_hint": "REF-1610"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1610",
+            "amount": 35000.0,
+            "direction": "CREDIT",
+            "bank_reference": "REF-1610"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "DAY16-11-CONCURRENT-ASSIGNMENT",
+      "scenario_type": "CONCURRENT_ASSIGNMENT",
+      "description": "Concurrent assignment modifications maintain single active reviewer per case",
+      "expected_status": "CONFIRMED",
+      "case_input": {
+        "case_id": "DAY16-11-CONCURRENT-ASSIGNMENT",
+        "evidence": [
+          {
+            "id": "EVID-1611",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1611.pdf",
+            "raw_payload": "Invoice for INR 40,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1611",
+            "evidence_id": "EVID-1611",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 40000.0,
+            "reference_id_hint": "REF-1611"
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1611",
+            "amount": 40000.0,
+            "direction": "CREDIT",
+            "bank_reference": "REF-1611"
+          }
+        ]
+      }
+    },
+    {
+      "case_id": "DAY16-12-RESTART-RECOVERY",
+      "scenario_type": "RESTART_RECOVERY",
+      "description": "Complete restoration of multi-case portfolio, review history, and audit chains across engine restart",
+      "expected_status": "PARTIALLY_SETTLED",
+      "case_input": {
+        "case_id": "DAY16-12-RESTART-RECOVERY",
+        "evidence": [
+          {
+            "id": "EVID-1612",
+            "modality": "INVOICE",
+            "source_type": "ZOHO_INVOICE",
+            "source_name": "inv_1612.pdf",
+            "raw_payload": "Invoice for INR 60,000"
+          }
+        ],
+        "claims": [
+          {
+            "id": "CLM-1612",
+            "evidence_id": "EVID-1612",
+            "claim_type": "INVOICE_ISSUED",
+            "claimed_amount": 60000.0
+          }
+        ],
+        "transactions": [
+          {
+            "id": "TXN-1612",
+            "amount": 40000.0,
+            "direction": "CREDIT"
+          }
+        ],
+        "metadata": {
+          "precomputed_match_relationships": [
+            {
+              "id": "MAT-1612",
+              "relationship_type": "PARTIAL",
+              "status": "MATCHED",
+              "source_claim_ids": ["CLM-1612"],
+              "target_transaction_ids": ["TXN-1612"],
+              "matched_amount": 40000.0,
+              "target_amount": 60000.0,
+              "score": 0.95,
+              "explanation": "Partial installment"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
