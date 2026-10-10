@@ -16,6 +16,12 @@ def _check_summary(result, created_at: str | None, review) -> Dict[str, Any]:
     fs = result.financial_summary or {}
     recon = result.reconciliation
     name = report.entity_summary.canonical_name if report else None
+    expected = recon.expected_amount if recon else fs.get("claimed_amount")
+    matched = recon.matched_amount if recon else fs.get("matched_amount", 0.0)
+    outstanding = recon.outstanding_amount if recon else fs.get("outstanding_amount", 0.0)
+    if result.status == "CONTRADICTED":
+        # The money is in the bank but disputed; only a genuine shortfall counts as "still due".
+        outstanding = max(0.0, (expected or 0.0) - (matched or 0.0))
     return {
         "case_id": result.case_id,
         "title": report.title if report else result.case_id,
@@ -25,9 +31,9 @@ def _check_summary(result, created_at: str | None, review) -> Dict[str, Any]:
         "requires_review": bool(report and report.unresolved_items) or result.status not in ("CONFIRMED",),
         "review_status": review.status.value if review else None,
         "review_decision": review.decision.value if review and review.decision else None,
-        "expected_amount": recon.expected_amount if recon else fs.get("claimed_amount"),
-        "matched_amount": recon.matched_amount if recon else fs.get("matched_amount", 0.0),
-        "outstanding_amount": recon.outstanding_amount if recon else fs.get("outstanding_amount", 0.0),
+        "expected_amount": expected,
+        "matched_amount": matched,
+        "outstanding_amount": outstanding,
         "issues_count": len(report.contradiction_summary) if report else fs.get("discrepancies_count", 0),
         "files_count": fs.get("evidence_count", 0),
         "created_at": created_at or (report.created_at.isoformat() if report else None),

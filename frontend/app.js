@@ -210,8 +210,8 @@ const REVIEW_LABEL = {
   ESCALATED: "Escalated", RESOLVED: "Reviewed", CLOSED: "Closed",
 };
 const DECISION_LABEL = {
-  CONFIRMED: "Approved", REJECTED: "Marked wrong", NEEDS_MORE_EVIDENCE: "Needs more proof",
-  ESCALATED: "Escalated", ACKNOWLEDGED: "Acknowledged", UNRESOLVED: "Unresolved",
+  CONFIRMED: "Confirmed by you", REJECTED: "Marked as wrong", NEEDS_MORE_EVIDENCE: "Waiting for more proof",
+  ESCALATED: "Escalated", ACKNOWLEDGED: "Settled outside the bank", UNRESOLVED: "Unresolved",
 };
 
 const CLAIM_TYPE = {
@@ -1236,7 +1236,7 @@ async function viewChecks(view, query) {
 const TABS = [
   { id: "summary", label: "Summary", icon: "summarize" },
   { id: "records", label: "Records", icon: "folder_open" },
-  { id: "review", label: "Review", icon: "rate_review" },
+  { id: "review", label: "Your answer", icon: "rate_review" },
   { id: "followups", label: "Follow-ups", icon: "outgoing_mail" },
   { id: "history", label: "History", icon: "history" },
 ];
@@ -1262,6 +1262,7 @@ async function viewCheck(view, id, tab) {
   const issues = r.contradiction_summary || [];
   const pendingReview = result.requires_review && !["RESOLVED", "CLOSED"].includes(review.status);
   const conf = Math.round((result.confidence || 0) * 100);
+  const bannerQ = reviewQuestion(result.status, { who: who || "this person", expected, matched, due, issues, hasBank: (r.transaction_summary || []).length > 0 });
 
   view.innerHTML = `
     <div class="page">
@@ -1285,17 +1286,19 @@ async function viewCheck(view, id, tab) {
           </div>` : ""}
           <dl class="settle-legend">
             <div><dt><i class="sw got"></i>In your bank</dt><dd>${inr(matched)}</dd></div>
-            <div><dt><i class="sw due"></i>Still due</dt><dd>${inr(due)}</dd></div>
+            ${result.status === "CONTRADICTED"
+              ? `<div><dt>Status</dt><dd class="t-red">On hold until you answer</dd></div>`
+              : `<div><dt><i class="sw due"></i>Still due</dt><dd>${inr(due)}</dd></div>`}
             <div><dt>Confidence</dt><dd>${conf}%</dd></div>
           </dl>
         </div>
         ${pendingReview ? `
           <div class="review-banner">
             ${icon("flag")}
-            <div class="txt"><b>This check needs your review</b>${issues.length ? `${issues.length} thing${issues.length === 1 ? "" : "s"} didn't add up.` : "Verity couldn't confirm everything on its own."}</div>
-            <a class="btn btn-primary btn-sm" href="#/checks/${encodeURIComponent(id)}?tab=review">Review now</a>
+            <div class="txt"><b>${esc(bannerQ.question)}</b>${esc(bannerQ.context)}</div>
+            <a class="btn btn-primary btn-sm" href="#/checks/${encodeURIComponent(id)}?tab=review">Answer</a>
           </div>` : review.decision ? `
-          <div class="callout tone-green">${icon("shield")}<span>You reviewed this check: <b>${esc(DECISION_LABEL[review.decision] || titleCase(review.decision))}</b>.</span></div>` : ""}
+          <div class="callout tone-green">${icon("shield")}<span>Your answer: <b>${esc(DECISION_LABEL[review.decision] || titleCase(review.decision))}</b>. <a href="#/checks/${encodeURIComponent(id)}?tab=review" style="text-decoration:underline">View</a></span></div>` : ""}
       </section>
 
       <nav class="tabs" role="tablist" data-tour="tabs">
@@ -1420,12 +1423,15 @@ function issueHtml(d) {
       <div style="flex:1;min-width:0">
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center"><b>${esc(m.label)}</b>${severityPill(d.severity)}</div>
         <p>${esc(cleanMessage(d.message))}</p>
-        ${hasCompare ? `<div class="compare"><span>Claimed: <b>${esc(fmtMaybeAmount(d.expected_value))}</b></span><span>Bank: <b>${esc(fmtMaybeAmount(d.observed_value))}</b></span></div>` : ""}
+        ${hasCompare ? `<div class="compare"><span>Claimed: <b>${esc(fmtMaybeAmount(d.expected_value, d.discrepancy_type))}</b></span><span>Bank: <b>${esc(fmtMaybeAmount(d.observed_value, d.discrepancy_type))}</b></span></div>` : ""}
       </div>
     </div>`;
 }
 function cleanMessage(m) { return String(m || "").replace(/^[A-Z_]+:\s*/, "").replace(/\.\.$/, "."); }
-function fmtMaybeAmount(v) { return /^\d+(\.\d+)?$/.test(String(v)) ? inr(Number(v)) : String(v); }
+function fmtMaybeAmount(v, type = "AMOUNT_MISMATCH") {
+  return type === "AMOUNT_MISMATCH" && /^\d+(\.\d+)?$/.test(String(v)) ? inr(Number(v)) : String(v);
+}
+function possessive(name) { return /s$/i.test(name) ? `${name}'` : `${name}'s`; }
 
 function renderRecordsTab(body, { report: r }) {
   const claims = r.claims_summary || [];
@@ -1503,103 +1509,164 @@ async function ensureReviewStarted(id, review) {
   return review;
 }
 
-function renderReviewTab(body, { id, result, review }) {
+function renderReviewTab(body, { id, result, review, report: r }) {
   const closed = review.status === "CLOSED";
-  const resolved = review.status === "RESOLVED";
-  const actions = review.actions || [];
   const notes = review.notes || [];
-  const doneCount = actions.filter((a) => a.status === "COMPLETED").length;
+  const rec = r.reconciliation_summary || {};
+  const who = knownName(r.entity_summary?.canonical_name) || "this person";
+  const expected = rec.expected_amount;
+  const matched = rec.matched_amount || 0;
+  const due = rec.outstanding_amount || 0;
 
-  const decisionBtn = (dec, ico, tone, title, sub) => `
-    <button class="decision${review.decision === dec ? " selected" : ""}" data-dec="${dec}" ${closed ? "disabled" : ""}>
-      <span class="ico tone-${tone}">${icon(ico, "fill")}</span>
-      <span><b>${title}</b><span>${sub}</span></span>
-    </button>`;
+  const allClaims = r.claims_summary || [];
+  const allTxns = r.transaction_summary || [];
+  const claims = (rec.claim_ids || []).length ? allClaims.filter((c) => rec.claim_ids.includes(c.claim_id)) : allClaims.slice(0, 1);
+  const txns = allTxns.filter((t) => (rec.transaction_ids || []).includes(t.transaction_id));
+  const issues = r.contradiction_summary || [];
+  const evidenceById = Object.fromEntries((r.evidence_summary || []).map((e) => [e.evidence_id, e]));
+
+  const q = reviewQuestion(result.status, { who, expected, matched, due, issues, hasBank: allTxns.length > 0 });
+  const bad = new Set(issues.map((d) => d.discrepancy_type));
+  const flag = (type) => (bad.has(type) ? ' class="conflict"' : "");
+
+  const claimRow = (c) => {
+    const ev = evidenceById[c.evidence_id];
+    const src = ev ? modalityMeta(ev.modality).label : "Your records";
+    return `
+      <div class="cmp-item">
+        <div class="cmp-amt money${bad.has("AMOUNT_MISMATCH") ? " conflict" : ""}">${c.claimed_amount != null ? inr(c.claimed_amount) : "No amount"}</div>
+        <dl class="cmp-meta">
+          <div${flag("ENTITY_MISMATCH")}><dt>From</dt><dd>${esc(c.counterparty_hint || "Unknown")}</dd></div>
+          <div${flag("DATE_MISMATCH")}><dt>Date</dt><dd>${esc(fmtClaimDate(c.claimed_date))}</dd></div>
+          ${c.reference_id_hint ? `<div${flag("REFERENCE_MISMATCH")}><dt>Reference</dt><dd class="mono">${esc(c.reference_id_hint)}</dd></div>` : ""}
+          <div><dt>Source</dt><dd>${esc(src)}</dd></div>
+        </dl>
+      </div>`;
+  };
+  const txnRow = (t) => `
+      <div class="cmp-item">
+        <div class="cmp-amt money ${t.direction === "CREDIT" ? "in" : "out"}${bad.has("AMOUNT_MISMATCH") ? " conflict" : ""}">${t.direction === "CREDIT" ? "" : "−"}${inr(t.amount)}</div>
+        <dl class="cmp-meta">
+          <div${flag("DIRECTION_MISMATCH")}><dt>Type</dt><dd>${t.direction === "CREDIT" ? "Money in" : "Money out"}${t.payment_method ? `, ${esc(t.payment_method)}` : ""}</dd></div>
+          <div${flag("DATE_MISMATCH")}><dt>Date</dt><dd>${esc(fmtDate(t.timestamp))}</dd></div>
+          ${t.bank_reference ? `<div${flag("REFERENCE_MISMATCH")}><dt>Reference</dt><dd class="mono">${esc(t.bank_reference)}</dd></div>` : ""}
+        </dl>
+      </div>`;
+
+  const decided = review.decision && ["RESOLVED", "CLOSED", "IN_PROGRESS", "ESCALATED"].includes(review.status);
+  const chosen = decided ? q.options.find((o) => o.decision === review.decision) : null;
 
   body.innerHTML = `
     <div class="stack">
-      <section class="card card-pad">
-        <div class="card-head">
-          <div>
-            <h2>Your decision</h2>
-            <p class="sub">${result.requires_review ? "Verity flagged this check. Have a look, then decide." : "Verity didn't flag anything, but you can still record a decision."}</p>
+      <section class="card review-ask">
+        <div class="card-pad">
+          <h2 class="review-q">${esc(q.question)}</h2>
+          <p class="sub" style="font-size:14.5px">${esc(q.context)}</p>
+        </div>
+
+        <div class="compare">
+          <div class="cmp-col">
+            <h3>${icon("chat")}What ${esc(who === "this person" ? "was claimed" : `${who} said`)}</h3>
+            ${claims.length ? claims.map(claimRow).join("") : `<p class="cmp-empty">No claim found in your files.</p>`}
           </div>
-          <span class="pill tone-${closed || resolved ? "green" : review.status === "PENDING" ? "amber" : "brand"}">${esc(REVIEW_LABEL[review.status] || titleCase(review.status))}</span>
+          <div class="cmp-col">
+            <h3>${icon("bank")}What your bank shows</h3>
+            ${txns.length ? txns.map(txnRow).join("") : `<div class="cmp-empty">${icon("searchX")}<span>${allTxns.length ? "No matching entry in your bank statement." : "No bank statement was added to this check."}</span></div>`}
+          </div>
         </div>
-        <div class="decisions">
-          ${decisionBtn("CONFIRMED", "thumb_up", "green", "Looks right", "Approve — the payment is fine.")}
-          ${decisionBtn("REJECTED", "thumb_down", "red", "Something's wrong", "Mark as incorrect and follow up.")}
-          ${decisionBtn("NEEDS_MORE_EVIDENCE", "upload_file", "amber", "Need more proof", "Keep open until you get more records.")}
-        </div>
-        ${resolved ? `<div class="row-actions mt-16"><button class="btn btn-secondary" id="close-review">${icon("lock")}Close this check</button><span class="muted small" style="align-self:center">Closing locks it — no more changes.</span></div>` : ""}
-        ${closed ? `<div class="callout tone-gray mt-16">${icon("lock")}<span>This check is closed and can no longer be changed.</span></div>` : ""}
+
+        ${q.gap ? `<div class="cmp-gap tone-${q.gapTone}">${icon(q.gapTone === "red" ? "alert" : "info")}<span>${q.gap}</span></div>` : ""}
       </section>
 
-      ${actions.length ? `
-      <section class="card">
-        <div class="card-pad" style="padding-bottom:6px">
-          <div class="card-head" style="margin:0"><h2>Things to check</h2><span class="muted small">${doneCount} of ${actions.length} done</span></div>
+      ${chosen ? `
+      <section class="card card-pad answered">
+        <div class="answered-head">
+          <span class="ico tone-${chosen.tone}">${icon(chosen.icon)}</span>
+          <div>
+            <p class="muted small">Your answer</p>
+            <h2>${esc(chosen.label)}</h2>
+          </div>
         </div>
-        <ul class="list checklist">
-          ${actions.map((a) => `
-            <li class="${a.status === "COMPLETED" ? "done" : ""}">
-              <input type="checkbox" data-action="${esc(a.action_id)}" ${a.status === "COMPLETED" ? "checked disabled" : ""} ${closed ? "disabled" : ""} aria-label="Mark done: ${esc(a.title)}">
-              <div><b>${esc(a.title)}</b><span>${esc(String(a.description || "").split(" Rationale:")[0])}</span></div>
-            </li>`).join("")}
-        </ul>
-      </section>` : ""}
+        <p class="mt-12">${esc(chosen.next)}</p>
+        <div class="row-actions mt-16">
+          ${chosen.cta ? `<a class="btn btn-primary" href="#/checks/${encodeURIComponent(id)}?tab=followups">${icon(chosen.cta.icon)}${esc(chosen.cta.label)}</a>` : ""}
+          ${closed ? "" : `<button class="btn btn-secondary" id="change-answer">Change answer</button>`}
+          ${review.status === "RESOLVED" ? `<button class="btn btn-ghost" id="close-review">${icon("lock")}Close this check</button>` : ""}
+        </div>
+        ${closed ? `<div class="callout tone-gray mt-16">${icon("lock")}<span>This check is closed and locked.</span></div>` : ""}
+      </section>` : `
+      <section class="card card-pad" id="answer-card">
+        <h2>Your answer</h2>
+        <p class="sub">Pick the one that fits. Your answer is saved with this check; it doesn't change the bank figures.</p>
+        <div class="answers mt-16" role="radiogroup" aria-label="Your answer">
+          ${q.options.map((o, i) => `
+            <label class="answer-opt">
+              <input type="radio" name="answer" value="${i}">
+              <span class="ico tone-${o.tone}">${icon(o.icon)}</span>
+              <span class="txt"><b>${esc(o.label)}</b><span>${esc(o.hint)}</span></span>
+            </label>`).join("")}
+        </div>
+        <div class="field mt-16">
+          <label for="answer-note">Add a note <span class="muted" style="font-weight:400">(optional)</span></label>
+          <textarea class="textarea" id="answer-note" maxlength="2000" style="min-height:76px" placeholder="${esc(q.notePlaceholder || "Anything you want to remember about this check")}"></textarea>
+        </div>
+        <div class="mt-16"><button class="btn btn-primary btn-lg" id="save-answer" disabled>Save answer</button></div>
+      </section>`}
 
       <section class="card">
-        <div class="card-pad">
+        <div class="card-pad" ${notes.length ? 'style="padding-bottom:12px"' : ""}>
           <h2>Notes</h2>
-          <p class="sub">Notes are permanent and time-stamped — useful for your accountant or an audit.</p>
-          ${closed ? "" : `
+          <p class="sub">Time-stamped and permanent, handy for your accountant.</p>
+          ${closed || !chosen ? "" : `
           <form id="note-form" class="stack mt-16" style="gap:10px">
             <label class="sr-only" for="note">Add a note</label>
-            <textarea class="textarea" id="note" style="min-height:90px" placeholder="e.g. Called Ramesh — he'll send the remaining ₹1,500 on Friday."></textarea>
-            <div><button class="btn btn-primary btn-sm">${icon("add")}Add note</button></div>
+            <textarea class="textarea" id="note" maxlength="2000" style="min-height:76px" placeholder="Write a note"></textarea>
+            <div><button class="btn btn-secondary btn-sm">${icon("plus")}Add note</button></div>
           </form>`}
+          ${!notes.length ? `<p class="muted small mt-12">No notes yet.</p>` : ""}
         </div>
-        ${notes.length ? notes.slice().reverse().map((n) => `
-          <div class="note"><div class="who">${esc(n.reviewer_name || "You")}, ${esc(fmtDate(n.timestamp, true))}</div><p>${esc(n.content)}</p></div>`).join("") : ""}
+        ${notes.slice().reverse().map((n) => {
+          const m = String(n.content).match(/^\[DECISION: (\w+)\]\s*/);
+          const text = m ? n.content.slice(m[0].length) : n.content;
+          const tag = m ? `, with answer "${esc(DECISION_LABEL[m[1]] || titleCase(m[1]))}"` : "";
+          return `<div class="note"><div class="who">${esc(n.reviewer_name || "You")}, ${esc(fmtDate(n.timestamp, true))}${tag}</div><p>${esc(text)}</p></div>`;
+        }).join("")}
       </section>
     </div>`;
 
-  const busy = (on) => $$("button, input", body).forEach((el) => { if (on) el.dataset.wasDisabled = el.disabled; el.disabled = on || el.dataset.wasDisabled === "true"; });
+  const busy = (on) => $$("button, input, textarea", body).forEach((el) => { el.disabled = on; });
 
-  $$("[data-dec]", body).forEach((btn) => btn.addEventListener("click", async () => {
-    const decision = btn.dataset.dec;
+  $$('input[name="answer"]', body).forEach((radio) => radio.addEventListener("change", () => {
+    $$(".answer-opt", body).forEach((l) => l.classList.toggle("selected", l.contains(radio) && radio.checked));
+    $("#save-answer").disabled = false;
+  }));
+
+  $("#save-answer")?.addEventListener("click", async () => {
+    const picked = $('input[name="answer"]:checked', body);
+    if (!picked) return;
+    const opt = q.options[Number(picked.value)];
+    const note = $("#answer-note").value.trim();
     busy(true);
     try {
       let rv = await ensureReviewStarted(id, review);
-      if (rv.status === "RESOLVED") {
-        rv = await api(`/api/v1/cases/${encodeURIComponent(id)}/review/start`, { method: "POST", body: reviewer() });
-      }
-      await api(`/api/v1/cases/${encodeURIComponent(id)}/review/decision`, { method: "POST", body: { decision, ...reviewer() } });
-      if (decision !== "NEEDS_MORE_EVIDENCE") {
+      if (rv.status === "RESOLVED") rv = await api(`/api/v1/cases/${encodeURIComponent(id)}/review/start`, { method: "POST", body: reviewer() });
+      await api(`/api/v1/cases/${encodeURIComponent(id)}/review/decision`, { method: "POST", body: { decision: opt.decision, notes: note || undefined, ...reviewer() } });
+      if (opt.decision !== "NEEDS_MORE_EVIDENCE") {
         await api(`/api/v1/cases/${encodeURIComponent(id)}/review/resolve`, { method: "POST", body: reviewer() });
       }
       invalidateChecks();
-      toast(decision === "CONFIRMED" ? "Approved. Nice work!" : decision === "REJECTED" ? "Marked as wrong. Draft a follow-up next." : "Kept open until you have more proof.", "success");
+      toast("Answer saved.", "success");
       render();
     } catch (err) {
       toast(err.message, "error");
       busy(false);
     }
-  }));
+  });
 
-  $$("[data-action]", body).forEach((cb) => cb.addEventListener("change", async () => {
-    busy(true);
-    try {
-      await ensureReviewStarted(id, review);
-      await api(`/api/v1/cases/${encodeURIComponent(id)}/review/action/${encodeURIComponent(cb.dataset.action)}/complete`, { method: "POST", body: reviewer() });
-      render();
-    } catch (err) {
-      toast(err.message, "error");
-      cb.checked = false;
-      busy(false);
-    }
-  }));
+  $("#change-answer")?.addEventListener("click", () => {
+    review.decision = null;
+    renderReviewTab(body, { id, result, review, report: r });
+  });
 
   $("#note-form")?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -1617,7 +1684,7 @@ function renderReviewTab(body, { id, result, review }) {
   });
 
   $("#close-review")?.addEventListener("click", async () => {
-    const ok = await confirmDialog({ title: "Close this check?", body: "Closed checks are locked. You won't be able to change the decision or add notes.", confirm: "Close check" });
+    const ok = await confirmDialog({ title: "Close this check?", body: "Closed checks are locked. You won't be able to change your answer or add notes.", confirm: "Close check" });
     if (!ok) return;
     try {
       await api(`/api/v1/cases/${encodeURIComponent(id)}/review/close`, { method: "POST", body: reviewer() });
@@ -1626,6 +1693,115 @@ function renderReviewTab(body, { id, result, review }) {
       render();
     } catch (err) { toast(err.message, "error"); }
   });
+}
+
+function fmtClaimDate(v) {
+  if (!v) return "Not stated";
+  const m = String(v).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  return m ? fmtDate(`${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`) : String(v);
+}
+
+/* The question, context and answers shown on the Review tab, in plain words per situation. */
+function reviewQuestion(status, { who, expected, matched, due, issues, hasBank }) {
+  const first = who === "this person" ? "they" : who.split(" ")[0];
+  const later = { decision: "NEEDS_MORE_EVIDENCE", icon: "hourglass", tone: "gray", label: "Not sure yet, keep it open",
+    hint: "Come back after you get more proof or a newer statement.",
+    next: "This check stays open. Run a new check when you have a newer bank statement or more proof." };
+
+  if (status === "PARTIAL" || status === "PARTIALLY_SETTLED") {
+    return {
+      question: `Did ${who} pay you only ${inr(matched)}?`,
+      context: `${who} claims ${inr(expected)}, but your bank shows ${inr(matched)}. ${inr(due)} is missing.`,
+      gap: `<b>${inr(due)} short.</b> The bank entry is real, but it's less than what was claimed.`, gapTone: "amber",
+      notePlaceholder: `e.g. Called ${first}, the rest comes on Friday.`,
+      options: [
+        { decision: "CONFIRMED", icon: "check", tone: "green", label: `Yes, ${first} still owes ${inr(due)}`,
+          hint: `Accept the ${inr(matched)} as received and follow up for the rest.`,
+          next: `Got it: ${inr(matched)} is accepted and ${inr(due)} is still owed. Send ${first} a reminder for the balance.`,
+          cta: { label: "Send a payment reminder", icon: "bell" } },
+        { decision: "ACKNOWLEDGED", icon: "checkCircle", tone: "blue", label: "The rest was paid another way",
+          hint: "e.g. cash, a different account, or a discount you agreed to.",
+          next: "Noted: you've confirmed the full amount is settled outside this bank statement. Add a note so you remember how." },
+        { ...later },
+      ],
+    };
+  }
+  if (status === "UNVERIFIABLE") {
+    return {
+      question: hasBank ? `Did ${possessive(who)} ${inr(expected)} reach you?` : `Can you confirm ${possessive(who)} payment?`,
+      context: hasBank
+        ? `${who} says they paid ${inr(expected)}, but there's no matching entry in the bank statement you added.`
+        : "This check has no bank statement, so Verity couldn't look for the money.",
+      gap: hasBank ? `<b>${inr(expected)} not found</b> in your bank statement.` : "<b>No bank statement.</b> Add one in a new check to confirm automatically.", gapTone: "red",
+      options: [
+        { decision: "REJECTED", icon: "x", tone: "red", label: "No, it never arrived",
+          hint: `Ask ${first} for proof such as a UTR number or bank receipt.`,
+          next: `Marked as not received. Ask ${first} for proof of payment, like a UTR number or a bank receipt.`,
+          cta: { label: "Ask for proof", icon: "fileSearch" } },
+        { decision: "ACKNOWLEDGED", icon: "checkCircle", tone: "green", label: "Yes, I got it another way",
+          hint: "e.g. cash, or into an account that isn't in this statement.",
+          next: "Noted: you've confirmed the payment arrived outside this statement. Add a note saying where." },
+        { ...later, label: "I'll check a newer statement", hint: "The money might not show up in this statement yet." },
+      ],
+    };
+  }
+  if (status === "CONTRADICTED") {
+    const issue = issues[0];
+    const what = issue ? issueMeta(issue.discrepancy_type).label.toLowerCase() : "details don't match";
+    const detail = issue && issue.expected_value && issue.observed_value
+      ? `${who} gave <b>${esc(fmtMaybeAmount(issue.expected_value, issue.discrepancy_type))}</b>, your bank shows <b>${esc(fmtMaybeAmount(issue.observed_value, issue.discrepancy_type))}</b>.`
+      : esc(cleanMessage(issue?.message || "The claim and the bank entry disagree."));
+    return {
+      question: `Is ${possessive(who)} payment genuine?`,
+      context: `The amount lines up, but the ${what}. That can be a typo, or a sign the proof isn't real.`,
+      gap: `<b>${esc(issue ? issueMeta(issue.discrepancy_type).label : "Mismatch")}.</b> ${detail}`, gapTone: "red",
+      notePlaceholder: `e.g. ${first === "they" ? "They" : first} sent a screenshot with the correct UTR.`,
+      options: [
+        { decision: "CONFIRMED", icon: "check", tone: "green", label: "Yes, it's a genuine payment",
+          hint: "The difference is a typo or a harmless mix-up.",
+          next: "Marked as genuine. The payment counts as received." },
+        { decision: "REJECTED", icon: "alert", tone: "red", label: "No, something's wrong",
+          hint: "The proof doesn't match. Raise it with them.",
+          next: `Marked as wrong. Send ${first} a notice pointing out the mismatch.`,
+          cta: { label: "Draft a dispute notice", icon: "scale" } },
+        { ...later },
+      ],
+    };
+  }
+  if (status === "UNMATCHED") {
+    return {
+      question: `Do you know who sent ${inr(matched)}?`,
+      context: "This money is in your bank, but nothing in your files says who it's from or what it's for.",
+      gap: null,
+      options: [
+        { decision: "ACKNOWLEDGED", icon: "checkCircle", tone: "green", label: "Yes, I know what it's for",
+          hint: "Add a note with who sent it, so your books are complete.",
+          next: "Noted. Make sure the note says who sent it and why." },
+        { ...later, label: "No idea yet", hint: "Keep it open until you find out." },
+      ],
+    };
+  }
+  if (status === "AMBIGUOUS" || status === "DUPLICATE") {
+    return {
+      question: status === "DUPLICATE" ? "Is this the same payment twice?" : `Which payment is ${possessive(who)}?`,
+      context: status === "DUPLICATE" ? "The same payment shows up more than once in your files. Verity counts it once." : "More than one bank entry could belong to this claim.",
+      gap: null,
+      options: [
+        { decision: "CONFIRMED", icon: "check", tone: "green", label: "Looks right", hint: "Accept what Verity found.", next: "Accepted." },
+        { decision: "REJECTED", icon: "x", tone: "red", label: "Something's wrong", hint: "Flag it and follow up.", next: "Marked as wrong. Follow up with them." },
+        { ...later },
+      ],
+    };
+  }
+  return {
+    question: "Everything matched. Anything to add?",
+    context: `The payment from ${who} is in your bank for the full amount. You don't need to do anything.`,
+    gap: null,
+    options: [
+      { decision: "CONFIRMED", icon: "check", tone: "green", label: "Looks right", hint: "Mark it as checked by you.", next: "Marked as checked. Nothing else to do." },
+      { decision: "REJECTED", icon: "x", tone: "red", label: "Something's wrong", hint: "You know something Verity doesn't.", next: "Marked as wrong. Add a note explaining why." },
+    ],
+  };
 }
 
 /* --- Follow-ups --- */
@@ -1987,7 +2163,7 @@ const TOURS = {
   check: [
     { target: "verdict", icon: "gavel", title: "The verdict", body: "One plain sentence on what happened, plus how sure Verity is about it." },
     { target: "amounts", icon: "currency_rupee", title: "The money", body: "What was expected, what actually reached your bank, and what's still due." },
-    { target: "tabs", icon: "tab", title: "Go deeper", body: "Records shows every file and bank entry used. Review is where you approve. Follow-ups drafts reminders and accounting entries. History keeps a tamper-proof log." },
+    { target: "tabs", icon: "tab", title: "Go deeper", body: "Records shows every file and bank entry used. Your answer is where you confirm what happened. Follow-ups drafts reminders and accounting entries. History keeps a tamper-proof log." },
     { target: "ask", icon: "auto_awesome", title: "Ask questions", body: "Ask anything in plain English — answers come only from your own records." },
   ],
 };

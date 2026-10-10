@@ -108,6 +108,8 @@ class ReconciliationSummary(BaseModel):
     outstanding_amount: float = Field(default=0.0, description="Outstanding balance INR")
     confidence_score: float = Field(default=1.0, description="Confidence score")
     reason_codes: List[str] = Field(default_factory=list, description="Applied rule codes")
+    claim_ids: List[str] = Field(default_factory=list, description="Claims this conclusion is about")
+    transaction_ids: List[str] = Field(default_factory=list, description="Bank transactions behind this conclusion")
 
 
 class ConfidenceFactor(BaseModel):

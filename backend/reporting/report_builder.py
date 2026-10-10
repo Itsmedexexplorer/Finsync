@@ -165,6 +165,8 @@ class FinancialTruthReportBuilder:
             outstanding_amount=reconciliation_result.outstanding_amount,
             confidence_score=reconciliation_result.confidence_score,
             reason_codes=reconciliation_result.reason_codes,
+            claim_ids=list(reconciliation_result.claim_ids),
+            transaction_ids=list(reconciliation_result.transaction_ids),
         )
 
         # 9. Natural Language Explanations & Factor Breakdown

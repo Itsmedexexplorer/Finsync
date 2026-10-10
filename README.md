@@ -40,7 +40,7 @@ Each check also shows **expected vs. received vs. still due**, a list of **what 
    - your **bank statement** (CSV export from net-banking or a Razorpay settlement report); this is the most important file
    - any **invoices** (PDF), **payment screenshots** (PNG/JPG) or **chat exports** (TXT). You can also paste a message.
 4. **Read the verdict.** Verity reads the files, matches every claim to a bank entry and shows the result.
-5. **Review.** If something doesn't add up, the check is flagged. Pick **Looks right**, **Something's wrong** or **Need more proof**, tick off the suggested tasks and add notes.
+5. **Answer one question.** If something doesn't add up, Verity asks you a plain question (e.g. "Did Vikram pay you only ₹12,000?") and shows what was claimed next to what your bank shows, with the difference highlighted. Pick the answer that fits and add a note if you like.
 6. **Follow up.** Create a payment reminder, a dispute notice, a request for proof, or a draft accounting entry. Verity writes the draft from the facts in the check; you copy it and send it yourself.
 7. **Track people.** The *People* page totals what each customer or vendor has paid and still owes across all your checks.
 
@@ -49,7 +49,7 @@ Each check also shows **expected vs. received vs. still due**, a list of **what 
 | **Home** | Totals: checks run, money confirmed in bank, still due, checks needing review |
 | **New check** | Upload files or paste a message, then run the check |
 | **Checks** | Every check with its verdict. Filter by *Needs review*, *Matched*, *Money due*, *Mismatch* |
-| **Check details** | Verdict, amounts, issues, next steps, Ask, plus tabs for Records, Review, Follow-ups and History |
+| **Check details** | Verdict, amounts, issues, next steps, Ask, plus tabs for Records, Your answer, Follow-ups and History |
 | **People** | Customers and vendors with paid/due totals |
 | **How it works** | Status meanings, file types, FAQ, replay the tour |
 | **Account** | Profile, change password, sign out |
