@@ -56,3 +56,31 @@ def test_one_to_one_formatted_reference_match(matcher: TransactionMatcher) -> No
     result = matcher.match(claims=[claim], transactions=[txn])
     assert len(result.relationships) == 1
     assert result.relationships[0].status == MatchStatus.MATCHED
+
+
+def test_unrelated_transactions_are_not_summed_into_a_claim(matcher: TransactionMatcher) -> None:
+    """A ₹35,000 credit from someone else plus a ₹5,000 ATM withdrawal must not 'settle' a ₹40,000 claim."""
+    claim = Claim(
+        id="CLM-ANANYA",
+        evidence_id="EVID-CHAT",
+        claim_type=ClaimType.PAYMENT_SENT,
+        claimed_amount=40000.0,
+        counterparty_hint="Ananya Rao",
+    )
+    credit = Transaction(id="TXN-R", amount=35000.0, direction=TransactionDirection.CREDIT,
+                         bank_reference="512309871234", narration="UPI/512309871234/RAMESH SHARMA/HDFC")
+    atm = Transaction(id="TXN-ATM", amount=5000.0, direction=TransactionDirection.DEBIT,
+                      bank_reference="ATM0098812", narration="ATM/WDL/KORAMANGALA/CASH")
+
+    result = matcher.match(claims=[claim], transactions=[credit, atm])
+    assert all(r.relationship_type != MatchRelationshipType.MANY_TO_ONE for r in result.relationships)
+
+
+def test_smaller_credit_from_someone_else_is_not_a_partial_payment(matcher: TransactionMatcher) -> None:
+    claim = Claim(id="CLM-ANANYA", evidence_id="EVID-CHAT", claim_type=ClaimType.PAYMENT_SENT,
+                  claimed_amount=40000.0, counterparty_hint="Ananya Rao")
+    credit = Transaction(id="TXN-R", amount=35000.0, direction=TransactionDirection.CREDIT,
+                         bank_reference="512309871234", narration="UPI/512309871234/RAMESH SHARMA/HDFC")
+
+    result = matcher.match(claims=[claim], transactions=[credit])
+    assert result.relationships == [] or all(r.relationship_type != MatchRelationshipType.PARTIAL for r in result.relationships)

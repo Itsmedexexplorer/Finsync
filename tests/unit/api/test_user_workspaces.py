@@ -109,3 +109,19 @@ def test_checks_people_and_delete(client: TestClient, two_users) -> None:
     assert client.delete(f"/api/v1/checks/{case_id}", headers=a).status_code == 200
     assert client.get("/api/v1/checks", headers=a).json() == []
     assert client.get(f"/api/v1/cases/{case_id}", headers=a).status_code == 404
+
+
+def test_unproven_claim_is_not_confirmed_by_someone_elses_payment(client: TestClient) -> None:
+    bank = (
+        "Date,Narration,Chq/Ref No,Withdrawal,Deposit,Balance\n"
+        "02/09/2026,UPI/512309871234/RAMESH SHARMA/HDFC,512309871234,0.00,35000.00,285000.00\n"
+        "10/09/2026,ATM/WDL/KORAMANGALA/CASH,ATM0098812,5000.00,0.00,280000.00\n"
+    )
+    chat = "[14/09/2026, 11:02:40] Ananya Rao: Sent Rs 40,000 via NEFT for the website project.\n"
+    res = client.post("/api/v1/cases/files", files=[
+        ("files", ("bank.csv", bank.encode(), "text/csv")),
+        ("files", ("chat.txt", chat.encode(), "text/plain")),
+    ]).json()
+    assert res["status"] == "UNVERIFIABLE"
+    rec = res["truth_report"]["reconciliation_summary"]
+    assert rec["expected_amount"] == 40000.0 and rec["matched_amount"] == 0.0

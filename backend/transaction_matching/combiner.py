@@ -54,6 +54,11 @@ class CombinationMatcher:
                 if ent_txns:
                     candidate_txns = ent_txns
 
+            # Adding up unrelated bank lines until they hit a total is coincidence, not proof.
+            # Every component must be tied to this claim (entity, reference or name in the
+            # narration) and must not carry a conflicting signal such as the wrong direction.
+            candidate_txns = [t for t in candidate_txns if cls._is_linked_component(claim, t, claim_ent, cfg)]
+
             # Limit candidate search space to prevent combinatorial explosion
             bounded_pool = candidate_txns[:15]
             max_r = min(len(bounded_pool), cfg.max_combination_size)
@@ -62,6 +67,8 @@ class CombinationMatcher:
 
             for r in range(2, max_r + 1):
                 for combo in itertools.combinations(bounded_pool, r):
+                    if len({t.direction for t in combo}) > 1:
+                        continue  # never mix money in with money out
                     combo_sum = sum(t.amount for t in combo)
                     if abs(combo_sum - target_amount) <= cfg.amount_tolerance_abs:
                         found_combo = combo
@@ -99,6 +106,17 @@ class CombinationMatcher:
                 ))
 
         return matches
+
+    LINK_SIGNALS = {"EXACT_ENTITY_MATCH", "EXACT_REFERENCE", "EXACT_REFERENCE_IN_NARRATION", "NARRATION_KEYWORD_MATCH"}
+
+    @classmethod
+    def _is_linked_component(
+        cls, claim: Claim, txn: Transaction, claim_ent: Optional[str], cfg: MatchConfig
+    ) -> bool:
+        _, matched, conflicting, _ = PairwiseSignalEvaluator.evaluate_pair(claim, txn, claim_ent, cfg)
+        if conflicting:
+            return False
+        return bool(cls.LINK_SIGNALS.intersection(matched))
 
     @classmethod
     def find_one_to_many_matches(

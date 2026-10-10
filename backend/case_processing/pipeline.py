@@ -284,7 +284,9 @@ class FinanceControllerPipeline:
         )
         ctx.reconciliation_result = recon_batch
         if recon_batch.results:
-            ctx.primary_reconciliation = recon_batch.results[0]
+            # The check is about what someone claimed; a leftover bank line shouldn't headline it.
+            with_claims = [r for r in recon_batch.results if r.claim_ids]
+            ctx.primary_reconciliation = (with_claims or recon_batch.results)[0]
 
         s7_duration = (time.perf_counter() - s7_start) * 1000.0
         ctx.stage_records.append(StageExecutionRecord(
@@ -311,7 +313,10 @@ class FinanceControllerPipeline:
         )
         ctx.reports = reports
         if reports:
-            ctx.primary_report = reports[0]
+            idx = 0
+            if ctx.primary_reconciliation is not None and len(reports) == len(recon_batch.results):
+                idx = next((i for i, r in enumerate(recon_batch.results) if r is ctx.primary_reconciliation), 0)
+            ctx.primary_report = reports[idx]
             if case_input.case_id:
                 ctx.primary_report.case_id = case_input.case_id
 

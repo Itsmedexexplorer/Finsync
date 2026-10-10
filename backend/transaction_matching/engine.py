@@ -219,13 +219,18 @@ class TransactionMatcher:
                 if t.id in matched_txn_ids:
                     continue
                 score, ms, cs, exp = PairwiseSignalEvaluator.evaluate_pair(c, t, c_ent, self.config)
-                if "PARTIAL_AMOUNT_MATCH" in ms and score >= 0.50 and not cs:
+                # A smaller amount alone isn't evidence; the bank line must also point to this claim,
+                # unless the user put exactly one claim and one bank line with no narration together
+                # (nothing points elsewhere; still only PROBABLE so a human confirms it).
+                linked = bool(CombinationMatcher.LINK_SIGNALS.intersection(ms))
+                sole_pair = len(remaining_claims) == 1 and len(remaining_txns) == 1 and not (t.narration or "").strip()
+                if "PARTIAL_AMOUNT_MATCH" in ms and score >= 0.50 and not cs and (linked or sole_pair):
                     # Established partial payment relationship
                     rel_id = f"MAT-PRT-{uuid.uuid4().hex[:8]}"
                     relationships.append(MatchRelationship(
                         id=rel_id,
                         relationship_type=MatchRelationshipType.PARTIAL,
-                        status=MatchStatus.MATCHED if score >= self.config.min_score_matched else MatchStatus.PROBABLE,
+                        status=MatchStatus.MATCHED if linked and score >= self.config.min_score_matched else MatchStatus.PROBABLE,
                         source_claim_ids=[c.id],
                         target_transaction_ids=[t.id],
                         matched_amount=t.amount,

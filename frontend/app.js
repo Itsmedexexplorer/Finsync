@@ -1279,7 +1279,7 @@ async function viewCheck(view, id, tab) {
         <div class="settle" data-tour="amounts">
           <p class="settle-figure"><span class="money">${inr(matched)}</span>${expected != null && expected !== matched ? `<span class="of">of ${inr(expected)}</span>` : ""}</p>
           <p class="settle-caption">${esc(plainSummary(result, r, who))}</p>
-          ${expected ? `
+          ${expected && result.status !== "CONTRADICTED" ? `
           <div class="settle-bar" role="img" aria-label="${inr(matched)} received, ${inr(due)} still due">
             <span class="got" style="width:${Math.min(100, Math.round((matched / expected) * 100))}%"></span>
           </div>` : ""}
@@ -1881,11 +1881,11 @@ function viewHelp(view) {
         <button class="btn btn-secondary" id="tour-again">${icon("tour")}Take the tour</button>
       </div>
 
-      <div class="steps">
-        <div class="card step"><span class="num">1</span><h3>You add records</h3><p>Your bank statement (CSV) plus invoices, payment screenshots or chat messages.</p></div>
-        <div class="card step"><span class="num">2</span><h3>Verity reads and matches</h3><p>It pulls out amounts, names, dates and UTR numbers, then looks for the matching bank entry.</p></div>
-        <div class="card step"><span class="num">3</span><h3>You get a verdict</h3><p>A clear status, the amount still due, any problems and suggested next steps.</p></div>
-      </div>
+      <ol class="steps">
+        <li><span class="num">1</span><div><h3>You add records</h3><p>Your bank statement (CSV) plus invoices, payment screenshots or chat messages.</p></div></li>
+        <li><span class="num">2</span><div><h3>Verity reads and matches</h3><p>It pulls out amounts, names, dates and UTR numbers, then looks for the matching bank entry.</p></div></li>
+        <li><span class="num">3</span><div><h3>You get a verdict</h3><p>A clear status, the amount still due, any problems and suggested next steps.</p></div></li>
+      </ol>
 
       <h2 class="section-title">What each status means</h2>
       <section class="card glossary">
