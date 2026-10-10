@@ -376,8 +376,10 @@ async function initAuth() {
     return;
   }
 
+  const redirect = readAuthRedirect(); // must run before Supabase consumes the URL
   state.sb = window.supabase.createClient(cfg.supabase_url, cfg.supabase_anon_key, {
-    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" },
+    // Implicit flow: links from emails work on any device, not only the browser that asked for them.
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "implicit" },
   });
 
   // getUser() checks the token with Supabase instead of trusting local storage.
@@ -387,6 +389,8 @@ async function initAuth() {
     setSession(error || !userData.user ? null : sessionData.session);
     if (error) await state.sb.auth.signOut({ scope: "local" }).catch(() => {});
   }
+
+  handleAuthRedirect(redirect);
 
   state.sb.auth.onAuthStateChange((event, session) => {
     const wasSignedIn = !!state.user;
@@ -399,6 +403,42 @@ async function initAuth() {
     if (event === "SIGNED_OUT") { state.recovery = false; caseCache.clear(); }
     if (!!state.user !== wasSignedIn) { invalidateChecks(); render(); }
   });
+}
+
+/* What a confirmation / reset email link put in the URL, if anything. */
+function readAuthRedirect() {
+  const query = new URLSearchParams(location.search);
+  const rawHash = location.hash.replace(/^#/, "");
+  const hash = rawHash.startsWith("/") ? new URLSearchParams() : new URLSearchParams(rawHash);
+  return {
+    err: query.get("error_description") || hash.get("error_description"),
+    errCode: query.get("error_code") || hash.get("error_code") || "",
+    type: hash.get("type") || query.get("type") || "",
+    fromEmail: hash.has("access_token") || query.has("code") || hash.has("error") || query.has("error"),
+  };
+}
+
+/* Turns the link result into a message (or the set-new-password screen) and cleans the URL. */
+function handleAuthRedirect({ err, errCode, type, fromEmail }) {
+  if (!fromEmail && !err) return;
+
+  if (err) {
+    const expired = /expired|invalid/i.test(errCode + " " + err);
+    state.authNotice = {
+      ok: false,
+      text: expired
+        ? "That link has expired or was already used. If you already confirmed your email, just sign in. Otherwise sign up again or use \"Forgot your password?\" to get a new link."
+        : `The link didn't work: ${err}`,
+    };
+  } else if (state.user && type === "recovery") {
+    state.recovery = true;
+  } else if (state.user) {
+    state.authNotice = null;
+    state.welcomeToast = type === "signup" ? "Email confirmed. Welcome to FinSync!" : null;
+  } else {
+    state.authNotice = { ok: true, text: "Your email is confirmed. Sign in below to continue." };
+  }
+  history.replaceState(null, "", location.pathname + "#/");
 }
 
 function setSession(session) {
@@ -634,6 +674,10 @@ function renderAuth(mode = "signin") {
   }, 1000);
 
   setMode(mode);
+  if (state.authNotice) {
+    showMsg(esc(state.authNotice.text), state.authNotice.ok);
+    state.authNotice = null;
+  }
   wireReveal(app);
   $$("#auth-seg button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
   $("#auth-forgot").addEventListener("click", () => setMode(current === "reset" ? "signin" : "reset"));
@@ -650,12 +694,12 @@ function renderAuth(mode = "signin") {
     });
   });
 
-  const showMsg = (html, ok = false) => {
+  function showMsg(html, ok = false) {
     const el = $("#auth-msg");
     el.className = ok ? "form-ok" : "form-error";
     el.innerHTML = html;
     el.hidden = false;
-  };
+  }
 
   $("#auth-form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -2291,5 +2335,6 @@ window.addEventListener("hashchange", () => { stopTour(); render().then(() => $(
 (async function boot() {
   applyTheme(getThemePref());
   await initAuth();
+  if (state.welcomeToast) { setTimeout(() => toast(state.welcomeToast, "success"), 300); state.welcomeToast = null; }
   render();
 })();

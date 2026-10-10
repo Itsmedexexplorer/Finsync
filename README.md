@@ -166,7 +166,7 @@ The repo includes a `render.yaml` blueprint.
 1. Push this project to your own GitHub repository.
 2. In Render: **New → Blueprint**, then pick the repository.
 3. When asked, enter `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`.
-4. Deploy. Then add the Render URL (e.g. `https://finsync.onrender.com`) as the *Site URL* and as a *Redirect URL* in Supabase → Authentication → URL Configuration.
+4. Deploy. Then add the Render URL as the *Site URL* and as a *Redirect URL* in Supabase → Authentication → URL Configuration (or edit `site_url` in `supabase/config.toml` and run `supabase config push`). The live app runs at https://finsync-vv9c.onrender.com.
 
 On the free plan the service sleeps after 15 minutes without traffic, so the first request after that takes about 30 seconds. User data isn't lost when it sleeps because it's restored from Supabase Storage.
 
