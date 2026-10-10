@@ -169,7 +169,7 @@ class FinancialTruthReport(BaseModel):
         """Renders a clean, structured human-readable text report."""
         lines: List[str] = []
         lines.append("=" * 60)
-        lines.append("VERITY FINANCIAL TRUTH REPORT")
+        lines.append("FINSYNC PAYMENT CHECK REPORT")
         lines.append("=" * 60)
         lines.append(f"Case ID      : {self.case_id}")
         lines.append(f"Report ID    : {self.report_id}")

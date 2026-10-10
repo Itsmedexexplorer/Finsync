@@ -1,5 +1,5 @@
 /* =========================================================
-   Verity — design tokens
+   FinSync — design tokens
    Neutral zinc surfaces, hairline borders, ink actions.
    Colour is reserved for meaning (matched / due / mismatch).
    Money is set in Instrument Serif; everything else in Geist.
@@ -221,7 +221,7 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
    ========================================================= */
 .brand { display: inline-flex; align-items: center; gap: 10px; color: var(--ink); }
 .brand img { width: 28px; height: 28px; border-radius: 8px; box-shadow: 0 0 0 1px var(--logo-ring); }
-.brand b { font-size: 18px; font-weight: 600; letter-spacing: -0.03em; }
+.brand b { font-size: 19px; font-weight: 700; letter-spacing: -0.03em; }
 
 .sidebar {
   position: fixed; inset: 0 auto 0 0; width: var(--sidebar-w); z-index: 20;

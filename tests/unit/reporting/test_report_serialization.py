@@ -35,6 +35,6 @@ def test_json_and_text_serialization() -> None:
 
     # Render Text Report
     text_str = service.render_text_report(report)
-    assert "VERITY FINANCIAL TRUTH REPORT" in text_str
+    assert "FINSYNC PAYMENT CHECK REPORT" in text_str
     assert "CASE-SER-01" in text_str
     assert "CONFIRMED" in text_str

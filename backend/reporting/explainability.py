@@ -59,23 +59,23 @@ class ExplainabilityEngine:
         """Generates an executive summary of the financial conclusion."""
         if status == ReconciliationStatus.CONFIRMED:
             exp_str = f"INR {expected_amount:,.2f}" if expected_amount is not None else f"INR {matched_amount:,.2f}"
-            return f"VERITY has fully confirmed the financial settlement of {exp_str} associated with {entity_name}. The expected obligation matches verified bank ledger records with zero unresolved contradictions."
+            return f"FinSync has fully confirmed the financial settlement of {exp_str} associated with {entity_name}. The expected obligation matches verified bank ledger records with zero unresolved contradictions."
 
         elif status in (ReconciliationStatus.PARTIAL, ReconciliationStatus.PARTIALLY_SETTLED):
-            return f"VERITY verified a partial settlement of INR {matched_amount:,.2f} against the expected obligation of INR {expected_amount:,.2f} for {entity_name}. An outstanding balance of INR {outstanding_amount:,.2f} remains unsettled."
+            return f"FinSync verified a partial settlement of INR {matched_amount:,.2f} against the expected obligation of INR {expected_amount:,.2f} for {entity_name}. An outstanding balance of INR {outstanding_amount:,.2f} remains unsettled."
 
         elif status == ReconciliationStatus.CONTRADICTED:
             reasons = [d.message for d in discrepancies] if discrepancies else ["Material discrepancies detected between claims and bank records."]
-            return f"VERITY identified financial contradictions that prevent reconciliation for {entity_name}. Core disagreement: {'; '.join(reasons)}"
+            return f"FinSync identified financial contradictions that prevent reconciliation for {entity_name}. Core disagreement: {'; '.join(reasons)}"
 
         elif status == ReconciliationStatus.AMBIGUOUS:
-            return f"VERITY identified multiple competing transaction candidates for {entity_name}. Financial truth cannot be safely resolved without human disambiguation."
+            return f"FinSync identified multiple competing transaction candidates for {entity_name}. Financial truth cannot be safely resolved without human disambiguation."
 
         elif status == ReconciliationStatus.UNVERIFIABLE:
-            return f"VERITY could not corroborate the financial claim for {entity_name} due to missing bank ledger transactions or unstated claim amounts."
+            return f"FinSync could not corroborate the financial claim for {entity_name} due to missing bank ledger transactions or unstated claim amounts."
 
         elif status == ReconciliationStatus.UNMATCHED:
-            return f"VERITY verified an unmatched bank ledger credit of INR {matched_amount:,.2f} that has no corresponding invoice, obligation, or counterparty claim."
+            return f"FinSync verified an unmatched bank ledger credit of INR {matched_amount:,.2f} that has no corresponding invoice, obligation, or counterparty claim."
 
         return f"Financial reconciliation evaluated with status {status.value}."
 
@@ -114,10 +114,10 @@ class ExplainabilityEngine:
             out = reconciliation_result.outstanding_amount
             lines.append(f"A valid partial payment relationship was established for {entity_name}.")
             lines.append(f"The original obligation was INR {exp:,.2f}, and verified ledger credits equal INR {rec:,.2f}.")
-            lines.append(f"Because the settlement relationship is partial, VERITY computed the remaining outstanding balance of INR {out:,.2f} rather than flagging an amount contradiction.")
+            lines.append(f"Because the settlement relationship is partial, FinSync computed the remaining outstanding balance of INR {out:,.2f} rather than flagging an amount contradiction.")
 
         elif status == ReconciliationStatus.CONTRADICTED:
-            lines.append(f"VERITY could not confirm settlement for {entity_name} due to material evidence contradictions.")
+            lines.append(f"FinSync could not confirm settlement for {entity_name} due to material evidence contradictions.")
             for d in discrepancies:
                 lines.append(f"Contradiction [{d.discrepancy_type.value}]: {d.message}")
                 if d.expected_value and d.observed_value:
@@ -126,7 +126,7 @@ class ExplainabilityEngine:
 
         elif status == ReconciliationStatus.AMBIGUOUS:
             lines.append(f"Reconciliation for {entity_name} is ambiguous because multiple candidate transactions or claims exist with equal plausibility.")
-            lines.append("VERITY explicitly avoids arbitrary tie-breaking to prevent incorrect accounting merges.")
+            lines.append("FinSync explicitly avoids arbitrary tie-breaking to prevent incorrect accounting merges.")
 
         elif status == ReconciliationStatus.UNVERIFIABLE:
             lines.append(f"The financial assertion for {entity_name} is unverifiable.")

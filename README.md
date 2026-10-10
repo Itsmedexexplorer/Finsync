@@ -1,14 +1,14 @@
 <p align="center">
-  <img src="frontend/assets/logo.svg" width="72" alt="Verity logo">
+  <img src="frontend/assets/logo.svg" width="72" alt="FinSync logo">
 </p>
 
-<h1 align="center">Verity</h1>
+<h1 align="center">FinSync</h1>
 <p align="center"><b>Find out who has really paid you.</b><br>
-Verity checks invoices, payment screenshots and WhatsApp messages against your bank statement and tells you, in plain words, what actually reached your account.</p>
+FinSync checks invoices, payment screenshots and WhatsApp messages against your bank statement and tells you, in plain words, what actually reached your account.</p>
 
 ---
 
-## What is Verity?
+## What is FinSync?
 
 Small businesses, agencies and freelancers in India get payment proof from all over the place:
 
@@ -17,7 +17,7 @@ Small businesses, agencies and freelancers in India get payment proof from all o
 - A PDF invoice from Zoho or Tally
 - The bank statement, which is the only record that shows money actually arrived
 
-A message or screenshot only shows that someone says they paid. Verity treats your **bank statement as the source of truth** and checks every claim against it.
+A message or screenshot only shows that someone says they paid. FinSync treats your **bank statement as the source of truth** and checks every claim against it.
 
 For each check you get:
 
@@ -39,9 +39,9 @@ Each check also shows **expected vs. received vs. still due**, a list of **what 
 3. **Start a check.** Tap **New check** and add:
    - your **bank statement** (CSV export from net-banking or a Razorpay settlement report); this is the most important file
    - any **invoices** (PDF), **payment screenshots** (PNG/JPG) or **chat exports** (TXT). You can also paste a message.
-4. **Read the verdict.** Verity reads the files, matches every claim to a bank entry and shows the result.
-5. **Answer one question.** If something doesn't add up, Verity asks you a plain question (e.g. "Did Vikram pay you only ₹12,000?") and shows what was claimed next to what your bank shows, with the difference highlighted. Pick the answer that fits and add a note if you like.
-6. **Follow up.** Create a payment reminder, a dispute notice, a request for proof, or a draft accounting entry. Verity writes the draft from the facts in the check; you copy it and send it yourself.
+4. **Read the verdict.** FinSync reads the files, matches every claim to a bank entry and shows the result.
+5. **Answer one question.** If something doesn't add up, FinSync asks you a plain question (e.g. "Did Vikram pay you only ₹12,000?") and shows what was claimed next to what your bank shows, with the difference highlighted. Pick the answer that fits and add a note if you like.
+6. **Follow up.** Create a payment reminder, a dispute notice, a request for proof, or a draft accounting entry. FinSync writes the draft from the facts in the check; you copy it and send it yourself.
 7. **Track people.** The *People* page totals what each customer or vendor has paid and still owes across all your checks.
 
 | Page | What it's for |
@@ -83,7 +83,7 @@ Browser (frontend/)                     Server (backend/, FastAPI)
 
 - **Rules do the maths.** Matching, amounts and statuses come from fixed rules, so the same input always gives the same answer. AI is optional and only helps read scanned documents. It never decides amounts.
 - **Your data is kept separate.** Each user has their own workspace (`data/workspaces/<user-id>/`). Users can't see each other's checks or people.
-- **Your data survives restarts.** Free hosting wipes the server's disk on every restart. After each change, Verity uploads a snapshot of your workspace to a private Supabase Storage bucket and restores it automatically the next time you sign in.
+- **Your data survives restarts.** Free hosting wipes the server's disk on every restart. After each change, FinSync uploads a snapshot of your workspace to a private Supabase Storage bucket and restores it automatically the next time you sign in.
 - **Uploaded files aren't kept.** They're written to a temp folder, processed and deleted. Only the results are stored.
 - **History can't be changed quietly.** Review activity is hash-chained, and *History → Verify* checks that nothing was edited.
 
@@ -124,8 +124,8 @@ Main code locations:
 You need **Python 3.10+**.
 
 ```bash
-git clone <your-repo-url> verity
-cd verity
+git clone <your-repo-url> finsync
+cd finsync
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
@@ -134,7 +134,7 @@ uvicorn backend.api.app:app --reload --port 8000
 
 Open **http://localhost:8000**.
 
-If you don't set any Supabase keys, Verity runs in **local mode**: there's no sign-in screen and a single workspace stored in `data/verity.db`. That's the quickest way to try it.
+If you don't set any Supabase keys, FinSync runs in **local mode**: there's no sign-in screen and a single workspace stored in `data/verity.db`. That's the quickest way to try it.
 
 ### Turn on sign-in (Supabase)
 
@@ -149,7 +149,7 @@ If you don't set any Supabase keys, Verity runs in **local mode**: there's no si
 4. In **Authentication → URL Configuration**, set the *Site URL* to where the app runs (e.g. `http://localhost:8000` or your deployed URL).
 5. Restart the server. You'll get the sign-in screen, and the private backup bucket is created on startup.
 
-No database tables are needed: Verity stores each user's workspace itself and uses Supabase only for accounts and backups.
+No database tables are needed: FinSync stores each user's workspace itself and uses Supabase only for accounts and backups.
 
 ### Run the tests
 
@@ -166,15 +166,15 @@ The repo includes a `render.yaml` blueprint.
 1. Push this project to your own GitHub repository.
 2. In Render: **New → Blueprint**, then pick the repository.
 3. When asked, enter `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`.
-4. Deploy. Then add the Render URL (e.g. `https://verity.onrender.com`) as the *Site URL* and as a *Redirect URL* in Supabase → Authentication → URL Configuration.
+4. Deploy. Then add the Render URL (e.g. `https://finsync.onrender.com`) as the *Site URL* and as a *Redirect URL* in Supabase → Authentication → URL Configuration.
 
 On the free plan the service sleeps after 15 minutes without traffic, so the first request after that takes about 30 seconds. User data isn't lost when it sleeps because it's restored from Supabase Storage.
 
 ### Anywhere with Docker
 
 ```bash
-docker build -t verity .
-docker run -p 8000:8000 --env-file .env verity
+docker build -t finsync .
+docker run -p 8000:8000 --env-file .env finsync
 ```
 
 Run **a single instance**. Workspaces are cached on local disk, so running several replicas behind a load balancer needs a shared volume.
@@ -211,4 +211,4 @@ With `VERITY_ENABLE_DOCS=true` the full interactive reference is at `/docs`.
 
 ---
 
-Verity started as an entry for the Razorpay AI Buildathon 2026 (AI Finance Controller track).
+FinSync started life as VERITY, an entry for the Razorpay AI Buildathon 2026 (AI Finance Controller track).

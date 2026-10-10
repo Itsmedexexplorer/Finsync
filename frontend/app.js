@@ -1,5 +1,5 @@
 /* =========================================================
-   Verity web app
+   FinSync web app
    Plain JS, no build step. Hash routes:
      #/            Home
      #/new         New check
@@ -318,7 +318,7 @@ async function api(path, { method = "GET", body, form } = {}) {
   try {
     res = await fetch(path, { method, headers, body: payload });
   } catch {
-    throw new ApiError("Can't reach Verity. Check your internet connection and try again.", 0);
+    throw new ApiError("Can't reach FinSync. Check your internet connection and try again.", 0);
   }
   if (res.status === 401 && state.authEnabled) {
     await signOut(true);
@@ -360,7 +360,7 @@ async function initAuth() {
     if (!res.ok) throw new Error();
     cfg = await res.json();
   } catch {
-    state.bootError = "Can't reach Verity right now. Check your connection and try again.";
+    state.bootError = "Can't reach FinSync right now. Check your connection and try again.";
     return;
   }
 
@@ -427,7 +427,7 @@ function renderBootError() {
     <div class="auth-panel" style="min-height:100vh">
       <div class="auth-card" style="text-align:center;justify-items:center">
         <img src="assets/logo.svg" alt="" width="40" height="40">
-        <h2>Verity is unavailable</h2>
+        <h2>FinSync is unavailable</h2>
         <p class="muted">${esc(state.bootError)}</p>
         <button class="btn btn-primary" onclick="location.reload()">${icon("refresh")}Try again</button>
       </div>
@@ -512,10 +512,10 @@ function authShell(inner) {
   return `
     <div class="auth">
       <section class="auth-hero">
-        <a class="brand" href="#/"><img src="assets/logo.svg" alt=""><b>verity</b></a>
+        <a class="brand" href="#/"><img src="assets/logo.svg" alt=""><b>FinSync</b></a>
         <div>
           <h1>Know who has really paid you.</h1>
-          <p class="lead">Upload your bank statement with invoices, payment screenshots and WhatsApp messages. Verity matches every claim to your bank in seconds.</p>
+          <p class="lead">Upload your bank statement with invoices, payment screenshots and WhatsApp messages. FinSync matches every claim to your bank in seconds.</p>
           <div class="auth-sample" aria-hidden="true">
             <div class="as-msg"><b>Vikram</b><span>maine 15000 google pay kar diye hain</span></div>
             <div class="as-line"><span>ICICI statement, UPI 419082390192</span><span>+₹12,000</span></div>
@@ -527,7 +527,7 @@ function authShell(inner) {
       <section class="auth-panel">
         <div class="auth-card">
           <div class="auth-top">
-            <a class="brand hide-desktop" href="#/"><img src="assets/logo.svg" alt=""><b>verity</b></a>
+            <a class="brand hide-desktop" href="#/"><img src="assets/logo.svg" alt=""><b>FinSync</b></a>
             ${themeToggleHtml()}
           </div>
           ${inner}
@@ -820,7 +820,7 @@ function renderShell() {
   app.innerHTML = `
     <div class="shell">
       <aside class="sidebar" aria-label="Main">
-        <a class="brand" href="#/"><img src="assets/logo.svg" alt=""><b>verity</b></a>
+        <a class="brand" href="#/"><img src="assets/logo.svg" alt=""><b>FinSync</b></a>
         <a class="btn btn-primary btn-lg" href="#/new" data-tour="new">${icon("add")}New check</a>
         <nav class="stack" style="gap:4px">
           ${NAV.map((n) => `
@@ -838,7 +838,7 @@ function renderShell() {
       </aside>
 
       <header class="topbar">
-        <a class="brand" href="#/"><img src="assets/logo.svg" alt=""><b>verity</b></a>
+        <a class="brand" href="#/"><img src="assets/logo.svg" alt=""><b>FinSync</b></a>
         <a class="icon-btn" href="#/help" aria-label="How it works" data-tour="help">${icon("help")}</a>
       </header>
 
@@ -985,7 +985,7 @@ async function viewHome(view) {
         <section class="panel start">
           <div class="start-copy">
             <h2>Run your first check</h2>
-            <p>Add your bank statement and whatever proof you were sent: an invoice, a payment screenshot or a WhatsApp message. Verity tells you what actually reached your bank.</p>
+            <p>Add your bank statement and whatever proof you were sent: an invoice, a payment screenshot or a WhatsApp message. FinSync tells you what actually reached your bank.</p>
             <div class="row-actions mt-24">
               <a class="btn btn-primary btn-lg" href="#/new">${icon("plus")}New check</a>
               <button class="btn btn-secondary btn-lg" id="replay-tour">${icon("compass")}Show me around</button>
@@ -1000,7 +1000,7 @@ async function viewHome(view) {
 
         <ol class="steps">
           <li><span class="num">1</span><div><h3>Add your records</h3><p>A bank statement CSV, plus invoices, screenshots or chats.</p></div></li>
-          <li><span class="num">2</span><div><h3>Verity matches them</h3><p>Every claimed payment is compared with real entries in your statement.</p></div></li>
+          <li><span class="num">2</span><div><h3>FinSync matches them</h3><p>Every claimed payment is compared with real entries in your statement.</p></div></li>
           <li><span class="num">3</span><div><h3>You get a clear answer</h3><p>Matched, part paid or mismatch, with the amount still due.</p></div></li>
         </ol>
 
@@ -1102,7 +1102,7 @@ async function viewNew(view) {
     const hasBank = state.draftFiles.some((f) => fileKind(f.name).bank);
     const hasAny = state.draftFiles.length || paste.value.trim();
     $("#bank-hint").innerHTML = hasAny && !hasBank
-      ? `<div class="callout tone-amber">${icon("info", "fill")}<span><b>Tip:</b> add your bank statement (CSV) too. Without it Verity can read the claims but can't confirm that money actually arrived.</span></div>`
+      ? `<div class="callout tone-amber">${icon("info", "fill")}<span><b>Tip:</b> add your bank statement (CSV) too. Without it FinSync can read the claims but can't confirm that money actually arrived.</span></div>`
       : "";
     $("#run-check").disabled = !hasAny;
   };
@@ -1731,7 +1731,7 @@ function reviewQuestion(status, { who, expected, matched, due, issues, hasBank }
       question: hasBank ? `Did ${possessive(who)} ${inr(expected)} reach you?` : `Can you confirm ${possessive(who)} payment?`,
       context: hasBank
         ? `${who} says they paid ${inr(expected)}, but there's no matching entry in the bank statement you added.`
-        : "This check has no bank statement, so Verity couldn't look for the money.",
+        : "This check has no bank statement, so FinSync couldn't look for the money.",
       gap: hasBank ? `<b>${inr(expected)} not found</b> in your bank statement.` : "<b>No bank statement.</b> Add one in a new check to confirm automatically.", gapTone: "red",
       options: [
         { decision: "REJECTED", icon: "x", tone: "red", label: "No, it never arrived",
@@ -1784,10 +1784,10 @@ function reviewQuestion(status, { who, expected, matched, due, issues, hasBank }
   if (status === "AMBIGUOUS" || status === "DUPLICATE") {
     return {
       question: status === "DUPLICATE" ? "Is this the same payment twice?" : `Which payment is ${possessive(who)}?`,
-      context: status === "DUPLICATE" ? "The same payment shows up more than once in your files. Verity counts it once." : "More than one bank entry could belong to this claim.",
+      context: status === "DUPLICATE" ? "The same payment shows up more than once in your files. FinSync counts it once." : "More than one bank entry could belong to this claim.",
       gap: null,
       options: [
-        { decision: "CONFIRMED", icon: "check", tone: "green", label: "Looks right", hint: "Accept what Verity found.", next: "Accepted." },
+        { decision: "CONFIRMED", icon: "check", tone: "green", label: "Looks right", hint: "Accept what FinSync found.", next: "Accepted." },
         { decision: "REJECTED", icon: "x", tone: "red", label: "Something's wrong", hint: "Flag it and follow up.", next: "Marked as wrong. Follow up with them." },
         { ...later },
       ],
@@ -1799,7 +1799,7 @@ function reviewQuestion(status, { who, expected, matched, due, issues, hasBank }
     gap: null,
     options: [
       { decision: "CONFIRMED", icon: "check", tone: "green", label: "Looks right", hint: "Mark it as checked by you.", next: "Marked as checked. Nothing else to do." },
-      { decision: "REJECTED", icon: "x", tone: "red", label: "Something's wrong", hint: "You know something Verity doesn't.", next: "Marked as wrong. Add a note explaining why." },
+      { decision: "REJECTED", icon: "x", tone: "red", label: "Something's wrong", hint: "You know something FinSync doesn't.", next: "Marked as wrong. Add a note explaining why." },
     ],
   };
 }
@@ -1825,7 +1825,7 @@ async function renderFollowupsTab(body, { id }) {
     <div class="stack">
       <section class="card card-pad">
         <h2>Create a draft</h2>
-        <p class="sub">Verity writes it using only the facts in this check. Nothing is sent — you copy and send it yourself.</p>
+        <p class="sub">FinSync writes it using only the facts in this check. Nothing is sent — you copy and send it yourself.</p>
         <div class="followup-grid mt-16">
           ${FOLLOWUPS.map((f) => `<button class="fu-card" data-type="${f.type}"><span class="ico">${icon(f.icon)}</span><b>${f.title}</b><span>${f.sub}</span></button>`).join("")}
         </div>
@@ -1948,7 +1948,7 @@ async function renderHistoryTab(body, { id }) {
         <ul class="timeline">
           ${events.slice().reverse().map((e) => {
             const m = EVENT_LABEL[e.event_type] || { label: titleCase(e.event_type), icon: "radio_button_checked" };
-            return `<li><span class="dot">${icon(m.icon)}</span><b>${esc(m.label)}</b><small>${esc(fmtDate(e.timestamp, true))}, ${esc(e.actor_id === "system" ? "Verity" : e.actor_id === state.user?.id ? "You" : e.actor_id)}</small><p>${esc(e.description)}</p></li>`;
+            return `<li><span class="dot">${icon(m.icon)}</span><b>${esc(m.label)}</b><small>${esc(fmtDate(e.timestamp, true))}, ${esc(e.actor_id === "system" ? "FinSync" : e.actor_id === state.user?.id ? "You" : e.actor_id)}</small><p>${esc(e.description)}</p></li>`;
           }).join("") || `<li><p class="muted">No activity yet.</p></li>`}
         </ul>
         <div class="row-actions mt-8">
@@ -1995,7 +1995,7 @@ async function viewPeople(view) {
   const people = await api("/api/v1/counterparties");
   view.innerHTML = `
     <div class="page">
-      <div class="page-head"><div><h1>People</h1><p>Customers and vendors Verity found across your checks.</p></div></div>
+      <div class="page-head"><div><h1>People</h1><p>Customers and vendors FinSync found across your checks.</p></div></div>
       ${people.length ? `
         <div class="people-grid">
           ${people.map((p) => `
@@ -2013,7 +2013,7 @@ async function viewPeople(view) {
         <div class="card empty">
           <div class="art">${icon("group")}</div>
           <h3>No one here yet</h3>
-          <p>As you run checks, Verity remembers each customer and vendor — so you can see who has paid and who still owes you.</p>
+          <p>As you run checks, FinSync remembers each customer and vendor — so you can see who has paid and who still owes you.</p>
           <a class="btn btn-primary btn-lg" href="#/new">${icon("add")}Start a check</a>
         </div>`}
     </div>`;
@@ -2053,13 +2053,13 @@ function viewHelp(view) {
   view.innerHTML = `
     <div class="page">
       <div class="page-head">
-        <div><h1>How Verity works</h1><p>Everything you need to know, in two minutes.</p></div>
+        <div><h1>How FinSync works</h1><p>Everything you need to know, in two minutes.</p></div>
         <button class="btn btn-secondary" id="tour-again">${icon("tour")}Take the tour</button>
       </div>
 
       <ol class="steps">
         <li><span class="num">1</span><div><h3>You add records</h3><p>Your bank statement (CSV) plus invoices, payment screenshots or chat messages.</p></div></li>
-        <li><span class="num">2</span><div><h3>Verity reads and matches</h3><p>It pulls out amounts, names, dates and UTR numbers, then looks for the matching bank entry.</p></div></li>
+        <li><span class="num">2</span><div><h3>FinSync reads and matches</h3><p>It pulls out amounts, names, dates and UTR numbers, then looks for the matching bank entry.</p></div></li>
         <li><span class="num">3</span><div><h3>You get a verdict</h3><p>A clear status, the amount still due, any problems and suggested next steps.</p></div></li>
       </ol>
 
@@ -2070,11 +2070,11 @@ function viewHelp(view) {
 
       <h2 class="section-title">Questions</h2>
       <section class="card faq">
-        <details><summary>Why is the bank statement so important?</summary><p>A screenshot or a "payment done" message is just a claim. Only your bank statement proves money actually arrived. Verity uses the statement as the source of truth and checks everything else against it.</p></details>
+        <details><summary>Why is the bank statement so important?</summary><p>A screenshot or a "payment done" message is just a claim. Only your bank statement proves money actually arrived. FinSync uses the statement as the source of truth and checks everything else against it.</p></details>
         <details><summary>Which bank statement format works?</summary><p>A CSV export from your net-banking (HDFC, ICICI, SBI, Axis and most others) or a Razorpay settlement report. Columns like Date, Narration, Ref No, Withdrawal and Deposit are recognised automatically.</p></details>
-        <details><summary>Does Verity use AI to calculate amounts?</summary><p>No. All matching and maths is rule-based and repeatable. AI is only used to help read messy text, and every answer is tied back to your records.</p></details>
-        <details><summary>What does "Review" mean?</summary><p>When something doesn't add up, Verity asks you to decide. Approve it, mark it wrong, or keep it open until you get more proof. Your decision never changes the underlying numbers — it's recorded alongside them.</p></details>
-        <details><summary>Does Verity send emails for me?</summary><p>No. Follow-ups are drafts. You copy them and send them yourself from your email or WhatsApp.</p></details>
+        <details><summary>Does FinSync use AI to calculate amounts?</summary><p>No. All matching and maths is rule-based and repeatable. AI is only used to help read messy text, and every answer is tied back to your records.</p></details>
+        <details><summary>What does "Review" mean?</summary><p>When something doesn't add up, FinSync asks you to decide. Approve it, mark it wrong, or keep it open until you get more proof. Your decision never changes the underlying numbers — it's recorded alongside them.</p></details>
+        <details><summary>Does FinSync send emails for me?</summary><p>No. Follow-ups are drafts. You copy them and send them yourself from your email or WhatsApp.</p></details>
         <details><summary>Who can see my data?</summary><p>Only you. Every account has its own private workspace. Uploaded files are deleted right after processing; only the results are kept.</p></details>
       </section>
     </div>`;
@@ -2117,12 +2117,12 @@ function viewAccount(view, query) {
 
         <section class="card">
           <ul class="list">
-            <li><button class="row" id="acc-tour"><span class="ico">${icon("tour")}</span><span class="main-col"><span class="title">Replay the welcome tour</span><span class="meta">A quick walkthrough of each part of Verity</span></span>${icon("chevron_right", "chev")}</button></li>
-            <li><a class="row" href="#/help"><span class="ico">${icon("lightbulb")}</span><span class="main-col"><span class="title">How Verity works</span><span class="meta">Statuses, file types and FAQs</span></span>${icon("chevron_right", "chev")}</a></li>
+            <li><button class="row" id="acc-tour"><span class="ico">${icon("tour")}</span><span class="main-col"><span class="title">Replay the welcome tour</span><span class="meta">A quick walkthrough of each part of FinSync</span></span>${icon("chevron_right", "chev")}</button></li>
+            <li><a class="row" href="#/help"><span class="ico">${icon("lightbulb")}</span><span class="main-col"><span class="title">How FinSync works</span><span class="meta">Statuses, file types and FAQs</span></span>${icon("chevron_right", "chev")}</a></li>
             ${state.authEnabled ? `<li><button class="row" id="acc-signout" style="color:var(--red)"><span class="ico">${icon("logout")}</span><span class="main-col"><span class="title">Sign out</span></span></button></li>` : ""}
           </ul>
         </section>
-        <p class="muted small" style="text-align:center">Verity, payment checks for Indian businesses</p>
+        <p class="muted small" style="text-align:center">FinSync, payment checks for Indian businesses</p>
       </div>
     </div>`;
 
@@ -2152,16 +2152,16 @@ function viewAccount(view, query) {
    --------------------------------------------------------- */
 const TOURS = {
   main: [
-    { icon: "waving_hand", title: "Welcome to Verity", body: "Verity checks whether the payments people tell you about actually reached your bank. Here's a quick 30-second tour." },
-    { target: "new", icon: "add_circle", title: "Start a new check", body: "Upload your bank statement together with invoices, payment screenshots or WhatsApp chats. Verity matches every claim against your bank." },
+    { icon: "waving_hand", title: "Welcome to FinSync", body: "FinSync checks whether the payments people tell you about actually reached your bank. Here's a quick 30-second tour." },
+    { target: "new", icon: "add_circle", title: "Start a new check", body: "Upload your bank statement together with invoices, payment screenshots or WhatsApp chats. FinSync matches every claim against your bank." },
     { target: "home", icon: "home", title: "Your dashboard", body: "See at a glance how much has been confirmed in your bank, what's still due, and which checks need you." },
     { target: "checks", icon: "fact_check", title: "All your checks", body: "Every check gets a plain verdict — Matched, Part paid, Mismatch or No bank proof. The red badge counts checks waiting for your review." },
-    { target: "people", icon: "group", title: "Customers & vendors", body: "Verity remembers everyone across your checks, so you can see who has paid and who still owes you." },
+    { target: "people", icon: "group", title: "Customers & vendors", body: "FinSync remembers everyone across your checks, so you can see who has paid and who still owes you." },
     { target: "help", icon: "lightbulb", title: "Help is always here", body: "Status meanings, supported files and FAQs. You can replay this tour from here or from Account anytime." },
     { icon: "rocket_launch", title: "You're all set!", body: "Your workspace starts empty — nothing is filled in for you. Run your first check whenever you're ready.", cta: { label: "Start my first check", href: "#/new" } },
   ],
   check: [
-    { target: "verdict", icon: "gavel", title: "The verdict", body: "One plain sentence on what happened, plus how sure Verity is about it." },
+    { target: "verdict", icon: "gavel", title: "The verdict", body: "One plain sentence on what happened, plus how sure FinSync is about it." },
     { target: "amounts", icon: "currency_rupee", title: "The money", body: "What was expected, what actually reached your bank, and what's still due." },
     { target: "tabs", icon: "tab", title: "Go deeper", body: "Records shows every file and bank entry used. Your answer is where you confirm what happened. Follow-ups drafts reminders and accounting entries. History keeps a tamper-proof log." },
     { target: "ask", icon: "auto_awesome", title: "Ask questions", body: "Ask anything in plain English — answers come only from your own records." },

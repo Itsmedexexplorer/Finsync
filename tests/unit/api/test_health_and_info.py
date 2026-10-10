@@ -23,7 +23,7 @@ def test_info_endpoint(client: TestClient) -> None:
     response = client.get("/api/v1/info")
     assert response.status_code == 200
     data = response.json()
-    assert "VERITY" in data["app_name"]
+    assert "FinSync" in data["app_name"]
     assert "AI Finance Controller" in data["track"]
     assert len(data["available_pipeline_stages"]) == 8
     assert "INGESTION" in data["available_pipeline_stages"]

@@ -1,6 +1,6 @@
 {
-  "name": "Verity",
-  "short_name": "Verity",
+  "name": "FinSync",
+  "short_name": "FinSync",
   "description": "Check who has really paid you.",
   "start_url": "/",
   "display": "standalone",

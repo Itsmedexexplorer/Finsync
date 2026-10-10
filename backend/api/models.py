@@ -84,7 +84,7 @@ class ReadinessResponse(BaseModel):
 
 class InfoResponse(BaseModel):
     """System information, supported modalities, and pipeline stage capabilities."""
-    app_name: str = "VERITY — Financial Truth, Reconstructed"
+    app_name: str = "FinSync — Payment checks against your bank statement"
     version: str = "0.1.0-day11"
     track: str = "AI Finance Controller (Razorpay AI Buildathon 2026)"
     available_pipeline_stages: List[str] = [

@@ -50,7 +50,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     setup_logging(cfg.log_level)
 
     app = FastAPI(
-        title="VERITY — Financial Truth, Reconstructed",
+        title="FinSync — Payment checks against your bank statement",
         description="Multimodal Financial Reconciliation Engine & AI Finance Controller API (Razorpay AI Buildathon 2026)",
         version=cfg.api_version,
         docs_url="/docs" if cfg.enable_docs else None,
