@@ -205,12 +205,30 @@ class TextClaimExtractor(BaseExtractor):
 
     def _extract_amount(self, text: str) -> Tuple[Optional[float], Optional[str]]:
         """Extract exact numeric rupee amount with support for 'k', 'lakh', 'hazar', and Devanagari.
-        
-        When multiple candidate amounts exist in the text, picks the earliest asserted candidate.
+
+        Candidates are ranked by how clearly they are stated as money, then by position:
+          0. after a total label ("Total Due: Rs. 1,50,000.00", "Amount: ₹8,500")
+          1. marked as money (₹ / Rs / INR, 20k, 1.5 lakh, 15 hazar, 25000/-, word numerals)
+          2. comma-grouped numbers (35,000 · 1,25,000)
+          3. bare numbers, skipping ones that are part of an identifier (INV-1058, #1058, A77B)
+        Within the best rank, the earliest stated amount wins.
         """
         # 1. Convert Devanagari digits to standard digits
         normalized_text = text.translate(self.DEVANAGARI_DIGITS)
         candidates: List[Tuple[int, float]] = []
+        ranked: List[Tuple[int, int, float]] = []  # (rank, position, amount)
+
+        # 1b. Amounts right after a total / amount label
+        for m_tot in re.finditer(
+            r"(?:total\s*due|amount\s*due|grand\s*total|total\s*amount|net\s*payable|amount(?:\s*(?:paid|received))?)"
+            r"\s*[:\-]?\s*(?:₹|Rs\.?|INR)?\s*(?P<amt>\d+(?:,\d+)*(?:\.\d{1,2})?)",
+            normalized_text,
+            re.IGNORECASE,
+        ):
+            try:
+                ranked.append((0, m_tot.start(), round(float(m_tot.group("amt").replace(",", "")), 2)))
+            except ValueError:
+                pass
 
         # 2. Check full phrase word numerals
         for phrase, val in self.WORD_PHRASES:
@@ -262,32 +280,49 @@ class TextClaimExtractor(BaseExtractor):
             except ValueError:
                 pass
 
+        ranked.extend((1, pos, amt) for pos, amt in candidates)
+
         # 8. Check standalone comma-formatted numbers e.g. "35,000" or "1,25,000"
         for m_comma in re.finditer(r"\b(?P<amt>\d{1,3}(?:,\d{2,3})+(?:\.\d{1,2})?)\b", normalized_text):
+            if self._is_part_of_identifier(normalized_text, m_comma.start(), m_comma.end()):
+                continue
             cleaned = m_comma.group("amt").replace(",", "")
             try:
-                candidates.append((m_comma.start(), round(float(cleaned), 2)))
+                ranked.append((2, m_comma.start(), round(float(cleaned), 2)))
             except ValueError:
                 pass
 
         # 9. Check standalone plain integers (3 to 8 digits) that are not reference numbers (e.g. 12500, 22000)
         for m_num in re.finditer(r"\b\d{3,8}(?:\.\d{2})?\b", normalized_text):
             tok = m_num.group(0)
+            if self._is_part_of_identifier(normalized_text, m_num.start(), m_num.end()):
+                continue
             if not (len(tok) == 4 and tok.startswith("202")) and not (len(tok) == 4 and tok.startswith("19")):  # Skip years
                 try:
                     amt = float(tok)
                     if amt >= 100.0:
-                        candidates.append((m_num.start(), round(amt, 2)))
+                        ranked.append((3, m_num.start(), round(amt, 2)))
                 except ValueError:
                     pass
 
-        if candidates:
-            # Sort by position in text so earliest stated amount is chosen
-            candidates.sort(key=lambda c: c[0])
-            return candidates[0][1], None
+        if ranked:
+            # Most clearly stated money first, then the earliest position
+            ranked.sort(key=lambda c: (c[0], c[1]))
+            return ranked[0][2], None
 
         # 10. If text indicates payment was sent/received without explicit amount e.g. "I sent the money."
         return None, "No explicit monetary amount found in text evidence (amount is unknown)."
+
+    @staticmethod
+    def _is_part_of_identifier(text: str, start: int, end: int) -> bool:
+        """True for digits glued to letters or ID marks, e.g. INV-1058, #1058, A77B, 1058/26."""
+        before = text[start - 1] if start > 0 else ""
+        after = text[end] if end < len(text) else ""
+        if before.isalpha() or before in "#_/":
+            return True
+        if before == "-" and start > 1 and text[start - 2].isalnum():
+            return True
+        return after.isalpha() or after in "_/" or (after == "-" and end + 1 < len(text) and text[end + 1].isalnum())
 
     def _extract_payment_method(self, text: str) -> Optional[str]:
         """Identify payment rail mentioned in natural language text."""

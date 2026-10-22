@@ -2194,6 +2194,7 @@ function viewHelp(view) {
       <h2 class="section-title">Questions</h2>
       <section class="card faq">
         <details><summary>Why is the bank statement so important?</summary><p>A screenshot or a "payment done" message is just a claim. Only your bank statement proves money actually arrived. FinSync uses the statement as the source of truth and checks everything else against it.</p></details>
+        <details><summary>Can FinSync read screenshots and photos?</summary><p>Yes. Payment screenshots, photos of receipts and scanned PDFs are read with OCR, which turns the picture into text. The same rules then pick out the amount, name and UTR. OCR can misread a blurry image, so check the amount against the original. The amount you actually received always comes from your bank statement.</p></details>
         <details><summary>Which bank statement format works?</summary><p>A CSV export from your net-banking (HDFC, ICICI, SBI, Axis and most others) or a Razorpay settlement report. Columns like Date, Narration, Ref No, Withdrawal and Deposit are recognised automatically.</p></details>
         <details><summary>What does "Review" mean?</summary><p>When something doesn't add up, FinSync asks you to decide. Approve it, mark it wrong, or keep it open until you get more proof. Your decision never changes the underlying numbers — it's recorded alongside them.</p></details>
         <details><summary>Does FinSync send emails for me?</summary><p>No. Follow-ups are drafts. You copy them and send them yourself from your email or WhatsApp.</p></details>

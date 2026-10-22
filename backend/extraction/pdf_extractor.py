@@ -109,9 +109,16 @@ class PDFDocumentExtractor(BaseExtractor):
 
     def _extract_invoice_number(self, text: str) -> Optional[str]:
         """Extract invoice reference identifier e.g. #INV-2026-088."""
-        m = re.search(r"(?:invoice\s*(?:no\.?|number|#)?|bill\s*no\.?)\s*[:#\s]?\s*([A-Za-z0-9_-]{4,24})", text, re.IGNORECASE)
-        if m:
-            return m.group(1).strip()
+        # Same line only, and the number must contain a digit (so "TAX INVOICE\nInvoice No: …"
+        # never returns the word "Invoice").
+        for m in re.finditer(
+            r"(?:invoice[ \t]*(?:no\.?|number|#)?|bill[ \t]*no\.?)[ \t]*[:#]?[ \t]*([A-Za-z0-9_-]{4,24})",
+            text,
+            re.IGNORECASE,
+        ):
+            candidate = m.group(1).strip()
+            if any(ch.isdigit() for ch in candidate):
+                return candidate
         # Fallback to INV pattern
         m_pat = re.search(r"\bINV[-_A-Za-z0-9]+\b", text)
         if m_pat:

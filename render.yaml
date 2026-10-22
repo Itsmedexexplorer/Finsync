@@ -2,14 +2,14 @@
 services:
   - type: web
     name: finsync
-    runtime: python
+    # Docker so the Tesseract OCR engine can be installed (see Dockerfile)
+    runtime: docker
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn backend.api.app:app --host 0.0.0.0 --port $PORT --proxy-headers
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.3
+      - key: VERITY_OCR_ENABLED
+        value: "true"
       - key: VERITY_ENV
         value: production
       - key: VERITY_ENABLE_DOCS

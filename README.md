@@ -15,11 +15,12 @@ FinSync is a web app for small businesses and freelancers. It checks invoices, p
 
 A WhatsApp message like "35,000 GPay kar diya" or a payment screenshot only shows that someone *says* they paid. FinSync treats the bank statement as the source of truth and checks every claim against it.
 
-FinSync works entirely on fixed rules: the same files always give the same result, and every number can be traced back to a record.
+FinSync works on fixed rules: the same files always give the same result, and every number can be traced back to a record. Screenshots and scanned documents are first turned into text with OCR; the same rules then read that text.
 
 ## Features
 
 - Upload a bank statement with invoices, chat exports or screenshots, or paste a message
+- **Reads images with OCR**: payment screenshots (GPay, PhonePe, Paytm), photos of receipts and scanned PDFs
 - Automatic matching of each payment claim to a bank entry (by amount, date, UTR/reference, invoice number and who paid)
 - A clear status for every check:
 
@@ -46,9 +47,11 @@ FinSync works entirely on fixed rules: the same files always give the same resul
 | File | Format |
 |---|---|
 | Bank statement | CSV (net-banking export or Razorpay settlement report) |
-| Invoices | PDF with selectable text |
+| Invoices and receipts | PDF (text or scanned), or a photo (PNG / JPG) |
 | Chats | TXT export, or paste a message |
-| Payment screenshots | PNG / JPG (saved as proof that someone says they paid; the amount inside the image isn't read) |
+| Payment screenshots | PNG / JPG |
+
+Images and scanned PDFs are read with OCR. A blurry photo can be misread, so FinSync marks those amounts "read with OCR" and the amount you actually received always comes from the bank statement.
 
 Up to 20 files per check, 15 MB each.
 
@@ -66,6 +69,7 @@ Up to 20 files per check, 15 MB each.
 |---|---|
 | Frontend | HTML, CSS, JavaScript |
 | Backend | Python, FastAPI |
+| Reading images | Tesseract OCR (pytesseract) |
 | Database | SQLite (one per user) |
 | Sign-in and backups | Supabase Auth and Supabase Storage |
 | Hosting | Render |
@@ -96,6 +100,8 @@ uvicorn backend.api.app:app --reload --port 8000
 
 Open **http://localhost:8000**.
 
+To read screenshots and scanned PDFs locally, also install the Tesseract program (`sudo apt install tesseract-ocr` on Ubuntu/Debian, `brew install tesseract` on macOS, or the Windows installer from the Tesseract project). Without it, everything else works and images are kept as proof without reading their amounts.
+
 Without Supabase keys, the app runs in single-user mode with no sign-in screen. To turn on sign-in, copy `.env.example` to `.env` and add your Supabase project's `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`.
 
 ### Run the tests
@@ -106,11 +112,13 @@ python -m pytest
 
 ## Deploy
 
-The repo includes a `render.yaml` file for [Render](https://render.com):
+The repo includes a `render.yaml` file for [Render](https://render.com). The service runs as **Docker**, so the Dockerfile can install Tesseract for OCR.
 
 1. In Render, choose **New → Blueprint** and select this repository.
 2. Enter the three Supabase keys when asked.
 3. Deploy, then add the Render URL as the *Site URL* in Supabase → Authentication → URL Configuration.
+
+An existing service that was created with the Python runtime keeps its URL when switched to Docker: in Render, open the service → **Settings → Build → Source → Edit**, choose **Docker**, then deploy.
 
 It can also run with Docker:
 

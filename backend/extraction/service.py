@@ -8,6 +8,7 @@ from backend.domain.evidence import Evidence, EvidenceModality, EvidenceSourceTy
 from backend.extraction.ai_provider import AIExtractionProvider
 from backend.extraction.bank_csv_extractor import BankCSVExtractor
 from backend.extraction.base import BaseExtractor
+from backend.extraction.ocr_extractor import OCRExtractor
 from backend.extraction.pdf_extractor import PDFDocumentExtractor
 from backend.extraction.result import ExtractionResult, ExtractionStatus
 from backend.extraction.text_extractor import TextClaimExtractor
@@ -22,11 +23,13 @@ class ExtractionService:
         text_extractor: Optional[TextClaimExtractor] = None,
         pdf_extractor: Optional[PDFDocumentExtractor] = None,
         ai_provider: Optional[AIExtractionProvider] = None,
+        ocr_extractor: Optional[OCRExtractor] = None,
     ) -> None:
         self.bank_extractor = bank_extractor or BankCSVExtractor()
         self.text_extractor = text_extractor or TextClaimExtractor()
         self.pdf_extractor = pdf_extractor or PDFDocumentExtractor()
         self.ai_provider = ai_provider or AIExtractionProvider()
+        self.ocr_extractor = ocr_extractor or OCRExtractor(self.text_extractor, self.pdf_extractor)
 
     def extract_from_evidence(
         self,
@@ -41,6 +44,13 @@ class ExtractionService:
             and evidence.source_type == EvidenceSourceType.BANK_CSV
         ):
             return self.bank_extractor.extract(evidence, context)
+
+        # 1b. Images and scanned PDFs: read their text with OCR, then apply the same rules.
+        #     When OCR is unavailable or reads nothing useful, fall through to the old path.
+        if self.ocr_extractor.can_extract(evidence) and self.ocr_extractor.is_available():
+            ocr_res = self.ocr_extractor.extract(evidence, context)
+            if ocr_res.status == ExtractionStatus.SUCCESS and ocr_res.claims:
+                return ocr_res
 
         # 2. PDF Document (Text vs Scanned)
         if evidence.source_name.lower().endswith(".pdf"):
