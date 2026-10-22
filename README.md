@@ -29,6 +29,7 @@ For each check you get:
 | **No bank proof** | Someone says they paid, but there's no matching bank entry. |
 | **Unclear** | More than one bank entry could match, so you need to pick. |
 | **Duplicate** | The same payment appears twice (e.g. screenshot + bank line). It's only counted once. |
+| **Unmatched** | A bank entry or bill with nothing to pair it with yet. |
 
 Each check also shows **expected vs. received vs. still due**, a list of **what didn't add up**, **next steps**, and an **Ask** box where you can ask questions about the check in plain English. Answers come only from your own records.
 
@@ -38,7 +39,9 @@ Each check also shows **expected vs. received vs. still due**, a list of **what 
 2. **Take the tour.** A short walkthrough opens on your first visit and points out each part of the app. You can replay it anytime from *How it works* or *Account*.
 3. **Start a check.** Tap **New check** and add:
    - your **bank statement** (CSV export from net-banking or a Razorpay settlement report); this is the most important file
-   - any **invoices** (PDF), **payment screenshots** (PNG/JPG) or **chat exports** (TXT). You can also paste a message.
+   - any **invoices** (PDF), **payment screenshots** (PNG/JPG/JPEG) or **chat exports** (TXT). You can also paste a message.
+   - up to 20 files per check, 15 MB each.
+   - Bank CSVs, text-based PDFs and chat text are read by built-in parsers. FinSync doesn't read text inside images, so a **screenshot** or **scanned PDF** is recorded as "someone says they paid" without an amount. For the amount to be checked, paste the payment message or add a text PDF.
 4. **Read the verdict.** FinSync reads the files, matches every claim to a bank entry and shows the result.
 5. **Answer one question.** If something doesn't add up, FinSync asks you a plain question (e.g. "Did Vikram pay you only ₹12,000?") and shows what was claimed next to what your bank shows, with the difference highlighted. Pick the answer that fits and add a note if you like.
 6. **Follow up.** Create a payment reminder, a dispute notice, a request for proof, or a draft accounting entry. FinSync writes the draft from the facts in the check; you copy it and send it yourself.
@@ -81,7 +84,9 @@ Browser (frontend/)                     Server (backend/, FastAPI)
                                           Supabase Storage (private "workspaces" bucket)
 ```
 
-- **Rules do the maths.** Matching, amounts and statuses come from fixed rules, so the same input always gives the same answer. AI is optional and only helps read scanned documents. It never decides amounts.
+- **No AI, only rules.** FinSync is not AI-powered. Reading files, matching, amounts and statuses all come from fixed rules, so the same input always gives the same answer.
+- **Explanations are rule-based too.** The verdict summary and the *Ask* answers are built from the check's own facts using templates, not written by a chatbot, so they can't invent numbers.
+- **Matching signals:** amount, date, UTR/reference number, invoice number, who paid (name, UPI ID, GSTIN, PAN) and direction of money.
 - **Your data is kept separate.** Each user has their own workspace (`data/workspaces/<user-id>/`). Users can't see each other's checks or people.
 - **Your data survives restarts.** Free hosting wipes the server's disk on every restart. After each change, FinSync uploads a snapshot of your workspace to a private Supabase Storage bucket and restores it automatically the next time you sign in.
 - **Uploaded files aren't kept.** They're written to a temp folder, processed and deleted. Only the results are stored.
@@ -98,6 +103,7 @@ Main code locations:
 | `backend/case_processing/` | The 8-stage pipeline |
 | `backend/ingestion`, `extraction`, `entity_resolution`, `transaction_matching`, `deduplication`, `contradiction_detection`, `reconciliation`, `reporting` | One folder per pipeline stage |
 | `backend/review`, `backend/controller` | Review workflow, next-step suggestions, follow-up drafts and journal entries |
+| `backend/storage`, `portfolio`, `cross_case`, `provenance`, `domain` | Database layer, totals across checks, people history, evidence trail, shared data models |
 | `docs/` | Technical notes for each subsystem |
 | `tests/` | 400+ automated tests |
 
@@ -113,7 +119,7 @@ Main code locations:
   - Browser: 5 wrong passwords, then a lockout of 30s that doubles each time, up to 15 minutes.
   - Supabase: 20 sign-in/sign-up attempts per 5 minutes per IP, and 60 seconds between confirmation or reset emails.
   - API, per IP: 240 requests a minute, and 30 a minute without a valid token.
-  - API, per user: 180 requests a minute, 10 checks a minute (60 an hour), 20 "Ask" questions a minute.
+  - API, per user: 180 requests a minute, 10 checks a minute (60 an hour), 20 "Ask" questions a minute, 60 other changes (POST/DELETE) a minute.
   - Over the limit you get `429` with a `Retry-After` header.
   - Notes are capped at 2,000 characters and questions at 500.
 - **Forgot password**: Supabase emails a reset link. It opens a "Set a new password" screen with the same password rules, and Supabase emails a notice when the password changes. The reply looks the same whether or not the email has an account, so nobody can use it to find out which emails are registered.
@@ -124,8 +130,8 @@ Main code locations:
 You need **Python 3.10+**.
 
 ```bash
-git clone <your-repo-url> finsync
-cd finsync
+git clone https://github.com/Itsmedexexplorer/Finsync.git
+cd Finsync
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
@@ -134,7 +140,7 @@ uvicorn backend.api.app:app --reload --port 8000
 
 Open **http://localhost:8000**.
 
-If you don't set any Supabase keys, FinSync runs in **local mode**: there's no sign-in screen and a single workspace stored in `data/verity.db`. That's the quickest way to try it.
+If you don't set any Supabase keys (and `VERITY_ENV` isn't `production`), FinSync runs in **local mode**: there's no sign-in screen and a single workspace stored in `data/verity.db`. That's the quickest way to try it.
 
 ### Turn on sign-in (Supabase)
 
@@ -156,6 +162,8 @@ No database tables are needed: FinSync stores each user's workspace itself and u
 ```bash
 python -m pytest
 ```
+
+There are 417 tests; all pass.
 
 ## Deploy
 
@@ -189,8 +197,10 @@ All settings are environment variables. `.env.example` lists them with comments.
 | `SUPABASE_SERVICE_ROLE_KEY` | empty | Server-only. Turns on workspace backups to Supabase Storage |
 | `VERITY_ENABLE_DEMO` | `false` | Expose the built-in sample scenarios and benchmark API (for development only) |
 | `VERITY_ENABLE_DOCS` | `true` | Interactive API docs at `/docs` |
+| `VERITY_ENV` | `development` | `production` refuses API calls (`503`) if Supabase isn't configured |
 | `VERITY_MAX_UPLOAD_MB` | `15` | Per-file upload limit |
-| `VERITY_AI_PROVIDER` | `MOCK` | `GEMINI` turns on AI reading of scanned documents (needs `GEMINI_API_KEY`) |
+| `VERITY_MAX_FILES_PER_CASE` | `20` | Files allowed in one check |
+| `VERITY_BACKUP_BUCKET` | `workspaces` | Private Supabase Storage bucket for workspace backups |
 
 ## API
 
@@ -199,16 +209,19 @@ The web app uses a JSON API, which you can also call directly. With Supabase tur
 | Method & path | Purpose |
 |---|---|
 | `POST /api/v1/cases/files` | Run a check on uploaded files (multipart `files`) |
+| `POST /api/v1/cases/text` | Run a check on pasted text |
 | `GET /api/v1/checks` | List your checks |
 | `GET /api/v1/cases/{id}` | Full result for one check |
+| `GET /api/v1/cases/{id}/report` | Structured report (JSON) for one check |
 | `DELETE /api/v1/checks/{id}` | Delete a check |
 | `GET /api/v1/counterparties` | People with paid/due totals |
 | `POST /api/v1/cases/{id}/controller/explain` | Ask a question about a check |
-| `GET/POST /api/v1/cases/{id}/review/...` | Review: start, note, decision, resolve, close, audit, verify |
+| `GET/POST /api/v1/cases/{id}/review/...` | Review: start, note, decision, resolve, close, `audit`, `audit/verify` |
 | `POST /api/v1/cases/{id}/actions/propose` | Draft a reminder, dispute notice, proof request or journal entry |
+| `GET /health` | Health check (no token needed) |
 
 With `VERITY_ENABLE_DOCS=true` the full interactive reference is at `/docs`.
 
 ---
 
-FinSync started life as VERITY, an entry for the Razorpay AI Buildathon 2026 (AI Finance Controller track).
+FinSync reuses the reconciliation engine from VERITY, an earlier project of ours. Unlike VERITY, FinSync does not use AI.
