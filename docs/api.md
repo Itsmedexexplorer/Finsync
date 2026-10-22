@@ -1,4 +1,4 @@
-# VERITY Finance Controller API Documentation
+# Finsync Finance Controller API Documentation
 
 **Day 11 Milestone: Production API Layer & System Endpoints**  
 
@@ -6,7 +6,7 @@
 
 ## 1. Overview & Architecture
 
-The **VERITY API** exposes the deterministic 8-stage Finance Controller Pipeline via a high-performance, asynchronous REST interface built with **FastAPI**:
+The **Finsync API** exposes the deterministic 8-stage Finance Controller Pipeline via a high-performance, asynchronous REST interface built with **FastAPI**:
 
 $$\text{Evidence / Payloads} \longrightarrow \text{FastAPI REST Endpoints} \longrightarrow \text{CaseProcessingService} \longrightarrow \text{FinanceControllerPipeline (8 Stages)} \longrightarrow \text{CaseResponse}$$
 
