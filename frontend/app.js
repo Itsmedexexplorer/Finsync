@@ -1007,13 +1007,15 @@ async function viewHome(view) {
   const checks = await loadChecks(true);
   const u = state.user;
 
+  const expected = checks.reduce((s, c) => s + (c.expected_amount || 0), 0);
   const received = checks.reduce((s, c) => s + (c.matched_amount || 0), 0);
   const due = checks.reduce((s, c) => s + (c.outstanding_amount || 0), 0);
   const attention = checks.filter(needsAttention);
 
   const stats = `
-    <section class="stats" aria-label="Overview" data-tour="stats">
-      <div class="stat"><span class="label">Confirmed in your bank</span><span class="value money">${inr(received)}</span></div>
+    <section class="stats stats-5" aria-label="Overview" data-tour="stats">
+      <div class="stat"><span class="label">Expected</span><span class="value money">${inr(expected)}</span></div>
+      <div class="stat"><span class="label">Confirmed in your bank</span><span class="value money t-green">${inr(received)}</span></div>
       <div class="stat"><span class="label">Still due</span><span class="value money ${due > 0 ? "t-amber" : ""}">${inr(due)}</span></div>
       <div class="stat"><span class="label">Checks run</span><span class="value">${checks.length}</span></div>
       <div class="stat"><span class="label">Waiting for your review</span><span class="value ${attention.length ? "t-red" : ""}">${attention.length}</span></div>
@@ -1064,12 +1066,89 @@ async function viewHome(view) {
       </div>
       ${stats}
 
+      <div class="dash mt-16">
+        <section class="panel card-pad" aria-labelledby="recent-h">
+          <div class="card-head"><h2 id="recent-h">Recent reconciliations</h2><a class="muted small" href="#/checks">View all</a></div>
+          ${reconTable(checks.slice(0, 6))}
+        </section>
+        <section class="panel card-pad" aria-labelledby="status-h">
+          <div class="card-head"><h2 id="status-h">Payment status</h2></div>
+          ${statusDonut(checks)}
+          ${collectionBar(received, expected)}
+        </section>
+      </div>
+
       ${attention.length ? `
         <h2 class="section-title">Waiting for your review <a href="#/checks?filter=review">View all</a></h2>
         <div class="panel"><ul class="list">${attention.slice(0, 4).map(checkRow).join("")}</ul></div>` : ""}
+    </div>`;
+}
 
-      <h2 class="section-title">Recent checks <a href="#/checks">View all</a></h2>
-      <div class="panel"><ul class="list">${checks.slice(0, 6).map(checkRow).join("")}</ul></div>
+/* --- Home dashboard pieces --- */
+const TONE_COLOR = { green: "var(--green)", amber: "var(--amber)", red: "var(--red)", blue: "var(--blue)", gray: "var(--faint)" };
+
+function reconTable(rows) {
+  return `
+    <div class="recon-wrap">
+      <table class="recon">
+        <thead><tr><th>Check</th><th class="num hide-sm">Expected</th><th class="num">Received</th><th>Status</th></tr></thead>
+        <tbody>${rows.map((c) => {
+          const who = c.counterparty || "Unnamed check";
+          const due = (c.outstanding_amount || 0) > 0;
+          return `<tr>
+            <td><a href="#/checks/${encodeURIComponent(c.case_id)}">${esc(who)}</a><span class="muted small">${esc(relTime(c.created_at))}</span></td>
+            <td class="num hide-sm">${inr(c.expected_amount)}</td>
+            <td class="num ${due ? "t-amber" : ""}">${inr(c.matched_amount)}</td>
+            <td>${statusPill(c.status)}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table>
+    </div>`;
+}
+
+function statusDonut(checks) {
+  // Group by the label people see, so statuses that share a label share a slice.
+  const groups = new Map();
+  for (const c of checks) {
+    const m = statusMeta(c.status);
+    const g = groups.get(m.label) || { label: m.label, tone: m.tone, count: 0 };
+    g.count += 1;
+    groups.set(m.label, g);
+  }
+  const parts = [...groups.values()].sort((a, b) => b.count - a.count);
+  const total = checks.length;
+  const r = 52, len = 2 * Math.PI * r;
+  let offset = 0;
+  const arcs = parts.map((p) => {
+    const share = (p.count / total) * len;
+    const gap = parts.length > 1 ? Math.min(2, share / 3) : 0;
+    const arc = `<circle cx="70" cy="70" r="${r}" fill="none" stroke="${TONE_COLOR[p.tone] || TONE_COLOR.gray}" stroke-width="20"
+      stroke-dasharray="${(share - gap).toFixed(2)} ${(len - share + gap).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 70 70)"/>`;
+    offset += share;
+    return arc;
+  }).join("");
+  const summary = parts.map((p) => `${p.count} ${p.label}`).join(", ");
+  return `
+    <div class="donut-wrap">
+      <svg class="donut" viewBox="0 0 140 140" role="img" aria-label="${esc(`Payment status: ${summary}`)}">
+        <circle cx="70" cy="70" r="${r}" fill="none" stroke="var(--subtle)" stroke-width="20"/>
+        ${arcs}
+        <text x="70" y="68" text-anchor="middle" class="donut-num">${total}</text>
+        <text x="70" y="86" text-anchor="middle" class="donut-cap">check${total === 1 ? "" : "s"}</text>
+      </svg>
+      <ul class="legend">${parts.map((p) => `
+        <li><span class="sw" style="background:${TONE_COLOR[p.tone] || TONE_COLOR.gray}"></span><span>${esc(p.label)}</span><b>${p.count}</b></li>`).join("")}
+      </ul>
+    </div>`;
+}
+
+function collectionBar(received, expected) {
+  if (!expected) return "";
+  const pct = Math.max(0, Math.min(100, Math.round((received / expected) * 100)));
+  return `
+    <div class="collect mt-16">
+      <div class="collect-top"><span class="muted small">Collected</span><span class="small"><b>${inr(received)}</b> of ${inr(expected)} · ${pct}%</span></div>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="Collected ${pct}% of expected"><span style="width:${pct}%"></span></div>
     </div>`;
 }
 

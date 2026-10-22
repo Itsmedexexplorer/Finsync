@@ -326,6 +326,41 @@ ol, ul { margin: 0; padding: 0; list-style: none; }
   .stat:last-child { border-right-width: 0; }
   .stat .value.money { font-size: 38px; }
 }
+.t-green { color: var(--green); }
+
+/* Five-figure strip on Home: 2 + 2 + 1 on phones, one row on desktop */
+.stats-5 .stat:nth-child(-n+4) { border-bottom-width: 1px; }
+.stats-5 .stat:last-child { grid-column: span 2; border-right-width: 0; }
+@media (min-width: 900px) {
+  .stats-5 { grid-template-columns: 1.25fr 1.25fr 1.25fr .9fr .9fr; }
+  .stats-5 .stat:last-child { grid-column: auto; }
+  .stats-5 .stat .value.money { font-size: 32px; }
+}
+
+/* Home dashboard: reconciliations table + status chart */
+.dash { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 1000px) { .dash { grid-template-columns: 1.6fr 1fr; } }
+.recon-wrap { overflow-x: auto; margin: 0 -4px; }
+.recon { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.recon th { text-align: left; font-size: 11.5px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 0 8px 10px; border-bottom: 1px solid var(--line); }
+.recon td { padding: 12px 8px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: middle; }
+.recon tr:last-child td { border-bottom: 0; }
+.recon td:first-child a { display: block; font-weight: 500; color: var(--ink); }
+.recon td:first-child a:hover { text-decoration: underline; }
+.recon td:first-child .small { display: block; font-size: 12.5px; }
+.recon .num { text-align: right; white-space: nowrap; }
+@media (max-width: 560px) { .recon .hide-sm { display: none; } }
+.donut-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+.donut { width: 140px; height: 140px; flex-shrink: 0; }
+.donut-num { font-size: 26px; font-weight: 600; fill: var(--ink); font-family: var(--sans); }
+.donut-cap { font-size: 11px; fill: var(--muted); font-family: var(--sans); }
+.legend { display: grid; gap: 8px; flex: 1; min-width: 150px; }
+.legend li { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink-2); }
+.legend li b { margin-left: auto; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.legend .sw { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.collect-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.bar { height: 8px; border-radius: 999px; background: var(--subtle); overflow: hidden; }
+.bar span { display: block; height: 100%; border-radius: inherit; background: var(--green); }
 
 /* Lists */
 .list > li + li { border-top: 1px solid var(--line); }

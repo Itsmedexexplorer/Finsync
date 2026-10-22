@@ -34,6 +34,7 @@ FinSync works entirely on fixed rules: the same files always give the same resul
 | **Unmatched** | A bank entry or bill with nothing to pair it with yet |
 
 - Expected vs. received vs. still due for every check
+- **Home dashboard**: totals (expected, confirmed in bank, still due), a payment-status chart, a collection progress bar and a table of recent reconciliations
 - A simple question when something doesn't add up, so you can confirm what happened
 - Ready-to-copy follow-ups: payment reminder, dispute notice, proof request, accounting entry
 - **People** page with paid and due totals for each customer or vendor
