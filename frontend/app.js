@@ -221,7 +221,7 @@ const CLAIM_TYPE = {
   CASH_PAYMENT_PROMISE: { label: "Cash / promise", icon: "payments" },
   REFUND_REQUESTED: { label: "Refund asked", icon: "undo" },
   DISCOUNT_APPLIED: { label: "Discount", icon: "sell" },
-  EXPENSE_INCURRED: { label: "Expense", icon: "shopping_bag" },
+  EXPENSE_INCURRED: { label: "Bill you paid", icon: "shopping_bag" },
 };
 
 const ISSUE = {
@@ -259,7 +259,9 @@ function modalityMeta(m) { return MODALITY[m] || { label: titleCase(m), icon: "d
 function fileKind(name) {
   const ext = (name.match(/\.[^.]+$/)?.[0] || "").toLowerCase();
   if (ext === ".csv") return { label: "Bank statement (CSV)", icon: "account_balance", tone: "brand", bank: true };
-  if (ext === ".pdf") return { label: "Invoice or document (PDF)", icon: "receipt_long", tone: "blue" };
+  if (ext === ".pdf" && /statement|bank|passbook|account|a\/c/i.test(name)) return { label: "Bank statement (PDF)", icon: "account_balance", tone: "brand", bank: true };
+  if (ext === ".pdf") return { label: "Invoice, receipt or statement (PDF)", icon: "receipt_long", tone: "blue" };
+  if ([".png", ".jpg", ".jpeg"].includes(ext) && /invoice|bill|receipt/i.test(name)) return { label: "Invoice or receipt (photo)", icon: "receipt_long", tone: "blue" };
   if ([".png", ".jpg", ".jpeg"].includes(ext)) return { label: "Payment screenshot", icon: "smartphone", tone: "amber" };
   if (ext === ".txt") return { label: "Chat export / text", icon: "chat", tone: "green" };
   return { label: "File", icon: "description", tone: "gray" };
@@ -1045,7 +1047,7 @@ async function viewHome(view) {
         </section>
 
         <ol class="steps">
-          <li><span class="num">1</span><div><h3>Add your records</h3><p>A bank statement CSV, plus invoices, screenshots or chats.</p></div></li>
+          <li><span class="num">1</span><div><h3>Add your records</h3><p>A bank statement (CSV or PDF), plus invoices, screenshots or chats.</p></div></li>
           <li><span class="num">2</span><div><h3>FinSync matches them</h3><p>Every claimed payment is compared with real entries in your statement.</p></div></li>
           <li><span class="num">3</span><div><h3>You get a clear answer</h3><p>Matched, part paid or mismatch, with the amount still due.</p></div></li>
         </ol>
@@ -1193,7 +1195,7 @@ async function viewNew(view) {
             <h2>What to add</h2>
             <p class="sub">The more you add, the clearer the answer.</p>
             <div class="kinds mt-16">
-              <div class="kind-card must">${icon("account_balance")}<b>Bank statement</b><span>CSV export from your bank. This is the proof.</span></div>
+              <div class="kind-card must">${icon("account_balance")}<b>Bank statement</b><span>CSV or PDF from your bank. This is the proof.</span></div>
               <div class="kind-card">${icon("receipt_long")}<b>Invoices</b><span>PDF bills you sent or received.</span></div>
               <div class="kind-card">${icon("smartphone")}<b>Screenshots</b><span>GPay, PhonePe, Paytm payment screens.</span></div>
               <div class="kind-card">${icon("chat")}<b>Chats</b><span>WhatsApp/SMS export (.txt) or pasted text.</span></div>
@@ -1225,7 +1227,7 @@ async function viewNew(view) {
     const hasBank = state.draftFiles.some((f) => fileKind(f.name).bank);
     const hasAny = state.draftFiles.length || paste.value.trim();
     $("#bank-hint").innerHTML = hasAny && !hasBank
-      ? `<div class="callout tone-amber">${icon("info", "fill")}<span><b>Tip:</b> add your bank statement (CSV) too. Without it FinSync can read the claims but can't confirm that money actually arrived.</span></div>`
+      ? `<div class="callout tone-amber">${icon("info", "fill")}<span><b>Tip:</b> add your bank statement (CSV or PDF) too. Without it FinSync can read the claims but can't confirm that money actually arrived.</span></div>`
       : "";
     $("#run-check").disabled = !hasAny;
   };
@@ -1385,7 +1387,7 @@ async function viewCheck(view, id, tab) {
   const issues = r.contradiction_summary || [];
   const pendingReview = result.requires_review && !["RESOLVED", "CLOSED"].includes(review.status);
   const conf = Math.round((result.confidence || 0) * 100);
-  const bannerQ = reviewQuestion(result.status, { who: who || "this person", expected, matched, due, issues, hasBank: (r.transaction_summary || []).length > 0 });
+  const bannerQ = reviewQuestion(result.status, { who: who || "this person", expected, matched, due, issues, hasBank: (r.transaction_summary || []).length > 0, paidBill: isPaidBill(r) });
 
   view.innerHTML = `
     <div class="page">
@@ -1408,7 +1410,7 @@ async function viewCheck(view, id, tab) {
             <span class="got" style="width:${Math.min(100, Math.round((matched / expected) * 100))}%"></span>
           </div>` : ""}
           <dl class="settle-legend">
-            <div><dt><i class="sw got"></i>In your bank</dt><dd>${inr(matched)}</dd></div>
+            <div><dt><i class="sw got"></i>${isPaidBill(r) ? "Paid from your bank" : "In your bank"}</dt><dd>${inr(matched)}</dd></div>
             ${result.status === "CONTRADICTED"
               ? `<div><dt>Status</dt><dd class="t-red">On hold until you answer</dd></div>`
               : `<div><dt><i class="sw due"></i>Still due</dt><dd>${inr(due)}</dd></div>`}
@@ -1451,6 +1453,15 @@ function plainSummary(result, r, who) {
   const matched = recon.matched_amount ?? fs.matched_amount;
   const expected = recon.expected_amount ?? fs.claimed_amount;
   const due = recon.outstanding_amount ?? fs.outstanding_amount;
+  if (isPaidBill(r)) {
+    switch (result.status) {
+      case "CONFIRMED": return `Your payment to ${name} is in your bank statement. The bill is paid in full.`;
+      case "PARTIAL":
+      case "PARTIALLY_SETTLED": return `You've paid part of the bill from ${name}. ${inr(due)} is still unpaid.`;
+      case "CONTRADICTED": return `Your payment to ${name} doesn't match the bill. Take a look before you mark it as paid.`;
+      default: break;
+    }
+  }
   switch (result.status) {
     case "CONFIRMED": return `The payment from ${name} is in your bank statement for the full amount.`;
     case "PARTIAL":
@@ -1581,7 +1592,7 @@ function renderRecordsTab(body, { report: r }) {
               <small>${esc(fmtDate(t.timestamp))}${t.bank_reference ? `<span class="ref">${esc(t.bank_reference)}</span>` : ""}</small>
             </div>
             <span class="amt ${t.direction === "CREDIT" ? "in" : "out"}">${t.direction === "CREDIT" ? "+" : "−"}${inr(t.amount)}</span>
-          </div>`).join("") : `<div class="card-pad" style="padding-top:0"><div class="callout tone-amber">${icon("info", "fill")}<span>No bank statement was included in this check, so nothing could be confirmed. Run a new check with your bank statement CSV.</span></div></div>`}
+          </div>`).join("") : `<div class="card-pad" style="padding-top:0"><div class="callout tone-amber">${icon("info", "fill")}<span>No bank statement was included in this check, so nothing could be confirmed. Run a new check with your bank statement (CSV or PDF).</span></div></div>`}
       </section>
 
       <section class="card">
@@ -1648,7 +1659,7 @@ function renderReviewTab(body, { id, result, review, report: r }) {
   const issues = r.contradiction_summary || [];
   const evidenceById = Object.fromEntries((r.evidence_summary || []).map((e) => [e.evidence_id, e]));
 
-  const q = reviewQuestion(result.status, { who, expected, matched, due, issues, hasBank: allTxns.length > 0 });
+  const q = reviewQuestion(result.status, { who, expected, matched, due, issues, hasBank: allTxns.length > 0, paidBill: isPaidBill(r) });
   const bad = new Set(issues.map((d) => d.discrepancy_type));
   const flag = (type) => (bad.has(type) ? ' class="conflict"' : "");
 
@@ -1825,11 +1836,35 @@ function fmtClaimDate(v) {
 }
 
 /* The question, context and answers shown on the Review tab, in plain words per situation. */
-function reviewQuestion(status, { who, expected, matched, due, issues, hasBank }) {
+/* A check about a supplier's bill the user paid (money out), not money owed to the user. */
+function isPaidBill(report) {
+  const claims = (report && report.claims_summary) || [];
+  return claims.length > 0 && claims.every((c) => c.claim_type === "EXPENSE_INCURRED");
+}
+
+function reviewQuestion(status, { who, expected, matched, due, issues, hasBank, paidBill }) {
   const first = who === "this person" ? "they" : who.split(" ")[0];
   const later = { decision: "NEEDS_MORE_EVIDENCE", icon: "hourglass", tone: "gray", label: "Not sure yet, keep it open",
     hint: "Come back after you get more proof or a newer statement.",
     next: "This check stays open. Run a new check when you have a newer bank statement or more proof." };
+
+  if (paidBill && (status === "PARTIAL" || status === "PARTIALLY_SETTLED")) {
+    return {
+      question: `Did you pay ${who} only ${inr(matched)}?`,
+      context: `The bill from ${who} is ${inr(expected)}, but your bank shows ${inr(matched)} paid. ${inr(due)} is still unpaid.`,
+      gap: `<b>${inr(due)} unpaid.</b> The payment is real, but it's less than the bill.`, gapTone: "amber",
+      notePlaceholder: "e.g. Paying the rest after delivery.",
+      options: [
+        { decision: "CONFIRMED", icon: "check", tone: "green", label: `Yes, I still owe ${inr(due)}`,
+          hint: `Accept the ${inr(matched)} as paid and keep the rest as due.`,
+          next: `Got it: ${inr(matched)} is paid and you still owe ${first} ${inr(due)}.` },
+        { decision: "ACKNOWLEDGED", icon: "checkCircle", tone: "blue", label: "The rest was paid another way",
+          hint: "e.g. cash, another account, or a discount they agreed to.",
+          next: "Noted: the bill is settled outside this bank statement. Add a note so you remember how." },
+        { ...later },
+      ],
+    };
+  }
 
   if (status === "PARTIAL" || status === "PARTIALLY_SETTLED") {
     return {
@@ -2181,7 +2216,7 @@ function viewHelp(view) {
       </div>
 
       <ol class="steps">
-        <li><span class="num">1</span><div><h3>You add records</h3><p>Your bank statement (CSV) plus invoices, payment screenshots or chat messages.</p></div></li>
+        <li><span class="num">1</span><div><h3>You add records</h3><p>Your bank statement (CSV or PDF) plus invoices, bills, payment screenshots or chat messages.</p></div></li>
         <li><span class="num">2</span><div><h3>FinSync reads and matches</h3><p>It pulls out amounts, names, dates and UTR numbers, then looks for the matching bank entry.</p></div></li>
         <li><span class="num">3</span><div><h3>You get a verdict</h3><p>A clear status, the amount still due, any problems and suggested next steps.</p></div></li>
       </ol>
@@ -2195,7 +2230,8 @@ function viewHelp(view) {
       <section class="card faq">
         <details><summary>Why is the bank statement so important?</summary><p>A screenshot or a "payment done" message is just a claim. Only your bank statement proves money actually arrived. FinSync uses the statement as the source of truth and checks everything else against it.</p></details>
         <details><summary>Can FinSync read screenshots and photos?</summary><p>Yes. Payment screenshots, photos of receipts and scanned PDFs are read with OCR, which turns the picture into text. The same rules then pick out the amount, name and UTR. OCR can misread a blurry image, so check the amount against the original. The amount you actually received always comes from your bank statement.</p></details>
-        <details><summary>Which bank statement format works?</summary><p>A CSV export from your net-banking (HDFC, ICICI, SBI, Axis and most others) or a Razorpay settlement report. Columns like Date, Narration, Ref No, Withdrawal and Deposit are recognised automatically.</p></details>
+        <details><summary>Which bank statement format works?</summary><p>A CSV or PDF statement from your net-banking (HDFC, ICICI, SBI, Axis and most others), or a Razorpay settlement report. Columns like Date, Narration or Beneficiary, UTR / Ref No, Withdrawal / Debit, Deposit / Credit and Balance are recognised automatically, even with extra text like "(INR)". Scanned PDF statements are read with OCR.</p></details>
+        <details><summary>Can I check bills I paid, not just money I'm owed?</summary><p>Yes. Upload a supplier's bill with your bank statement. If the bill's UTR, or the supplier's name and exact amount, shows up as money going out of your account, FinSync treats it as a bill you paid and checks that it was paid in full.</p></details>
         <details><summary>What does "Review" mean?</summary><p>When something doesn't add up, FinSync asks you to decide. Approve it, mark it wrong, or keep it open until you get more proof. Your decision never changes the underlying numbers — it's recorded alongside them.</p></details>
         <details><summary>Does FinSync send emails for me?</summary><p>No. Follow-ups are drafts. You copy them and send them yourself from your email or WhatsApp.</p></details>
         <details><summary>Who can see my data?</summary><p>Only you. Every account has its own private workspace. Uploaded files are deleted right after processing; only the results are kept.</p></details>

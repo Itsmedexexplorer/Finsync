@@ -53,6 +53,11 @@ class PairwiseSignalEvaluator:
             if transaction.direction != TransactionDirection.DEBIT:
                 # If transaction is credit, conflict unless claim was from counterparty perspective
                 pass
+        elif claim.claim_type == ClaimType.EXPENSE_INCURRED:
+            # A bill the user paid: money must leave the account
+            if transaction.direction != TransactionDirection.DEBIT:
+                conflicting_signals.append("MISMATCHED_DIRECTION")
+                reasons.append("Claim is a bill paid (outflow) but transaction is a credit.")
 
         # 2. Entity Compatibility
         txn_entity_id = transaction.origin_entity_id or transaction.destination_entity_id

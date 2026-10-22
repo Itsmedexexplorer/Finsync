@@ -61,9 +61,23 @@ class BankCSVExtractor(BaseExtractor):
         warnings: List[ExtractionWarning] = []
 
         # Determine direction & payment rail
-        payment_method = self._detect_payment_rail(narration_val)
-        counterparty_hint = self._extract_counterparty_from_narration(narration_val)
+        mode_val = raw_row.get("mode") or ""
+        payment_method = self._detect_payment_rail(mode_val) or self._detect_payment_rail(narration_val)
+        counterparty_hint = (raw_row.get("counterparty") or "").strip() or self._extract_counterparty_from_narration(narration_val)
         reference_hint = ref_val or self._extract_reference_from_narration(narration_val)
+
+        # An "Amount" column with a separate Dr/Cr (or Type) indicator
+        indicator = (raw_row.get("drcr") or mode_val or "").strip().upper()
+        amt_text = str(amt_val or "").strip().upper()
+        if amt_text.startswith("-") or amt_text.endswith("DR"):
+            indicator = "DR"  # signed or suffixed amounts: "-5,000.00", "5,000.00 Dr"
+        elif amt_text.endswith("CR"):
+            indicator = "CR"
+        if parsed_amt is not None and parsed_credit is None and parsed_debit is None and indicator:
+            if indicator in ("DR", "D", "DEBIT", "WITHDRAWAL", "DB"):
+                parsed_debit, parsed_amt = parsed_amt, None
+            elif indicator in ("CR", "C", "CREDIT", "DEPOSIT"):
+                parsed_credit, parsed_amt = parsed_amt, None
 
         # 1. Check Credit (Deposit)
         if parsed_credit is not None and parsed_credit > 0:

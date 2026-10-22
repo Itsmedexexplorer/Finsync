@@ -134,6 +134,8 @@ class ImagePaymentScreenshotAdapter(BaseIngestionAdapter):
             modality = EvidenceModality.CASH_VOUCHER
         elif "receipt" in lower_name:
             modality = EvidenceModality.RECEIPT
+        elif "invoice" in lower_name or "bill" in lower_name:
+            modality = EvidenceModality.INVOICE
         else:
             modality = EvidenceModality.PAYMENT_SCREENSHOT
 

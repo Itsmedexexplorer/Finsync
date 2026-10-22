@@ -181,7 +181,7 @@ class ReconciliationEngine:
             else:
                 # SAME_EVENT: claims describe the same underlying financial event without amount contradiction
                 # Prefer INVOICE_ISSUED claims representing the actual obligation(s)
-                invoice_claims = [c.claimed_amount for c in claims if c.claimed_amount is not None and c.claim_type == ClaimType.INVOICE_ISSUED]
+                invoice_claims = [c.claimed_amount for c in claims if c.claimed_amount is not None and c.claim_type in (ClaimType.INVOICE_ISSUED, ClaimType.EXPENSE_INCURRED)]
                 if invoice_claims:
                     expected_amt = round(sum(invoice_claims), 2)
                 else:
@@ -198,7 +198,10 @@ class ReconciliationEngine:
         # 3. Determine Matched Amount on Ledger
         matched_amt: float = 0.0
         if transactions:
-            matched_amt = round(sum(t.amount for t in transactions if t.direction == TransactionDirection.CREDIT or len(transactions) == 1), 2)
+            # Bills the user paid are settled by money going out; everything else by money coming in.
+            paid_bills = bool(claims) and all(c.claim_type == ClaimType.EXPENSE_INCURRED for c in claims)
+            settling = TransactionDirection.DEBIT if paid_bills else TransactionDirection.CREDIT
+            matched_amt = round(sum(t.amount for t in transactions if t.direction == settling or len(transactions) == 1), 2)
 
         # 4. Apply Rule Hierarchy
         status, supporting_sigs, contradicting_sigs, explanation = ReconciliationRuleEngine.evaluate_status(

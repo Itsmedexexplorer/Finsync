@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 from backend.domain.claim import Claim, ClaimStatus, ClaimType
 from backend.domain.evidence import Evidence, EvidenceModality
 from backend.extraction.base import BaseExtractor
+from backend.extraction.document_fields import find_invoice_number, find_parties, find_payment_reference
 from backend.extraction.result import ExtractionResult, ExtractionStatus, ExtractionWarning
 
 
@@ -59,7 +60,12 @@ class PDFDocumentExtractor(BaseExtractor):
         amount = self._extract_invoice_amount(raw_text)
 
         # Extract Billed To Party
-        counterparty = self._extract_counterparty(raw_text)
+        parties = find_parties(raw_text)
+        counterparty = parties.get("client") or self._extract_counterparty(raw_text)
+
+        # A UTR printed on the document is what the bank statement shows, so it is the
+        # reference to match on; the invoice number is kept alongside it.
+        payment_reference = find_payment_reference(raw_text)
 
         # Extract Date
         invoice_date = self._extract_date(raw_text)
@@ -80,11 +86,16 @@ class PDFDocumentExtractor(BaseExtractor):
             claimed_amount=amount,
             claimed_date=invoice_date,
             counterparty_hint=counterparty,
-            reference_id_hint=invoice_number,
+            reference_id_hint=payment_reference or invoice_number,
             confidence=round(confidence, 2),
             raw_text_snippet=raw_text[:300],
             status=ClaimStatus.ASSERTED,
-            metadata={"page_count": evidence.metadata.get("page_count", 1)},
+            metadata={
+                "page_count": evidence.metadata.get("page_count", 1),
+                **({"invoice_number": invoice_number} if invoice_number else {}),
+                **({"payment_reference": payment_reference} if payment_reference else {}),
+                **{f"party_{k}": v for k, v in parties.items()},
+            },
         )
 
         warnings: List[ExtractionWarning] = []
@@ -108,22 +119,8 @@ class PDFDocumentExtractor(BaseExtractor):
         )
 
     def _extract_invoice_number(self, text: str) -> Optional[str]:
-        """Extract invoice reference identifier e.g. #INV-2026-088."""
-        # Same line only, and the number must contain a digit (so "TAX INVOICE\nInvoice No: …"
-        # never returns the word "Invoice").
-        for m in re.finditer(
-            r"(?:invoice[ \t]*(?:no\.?|number|#)?|bill[ \t]*no\.?)[ \t]*[:#]?[ \t]*([A-Za-z0-9_-]{4,24})",
-            text,
-            re.IGNORECASE,
-        ):
-            candidate = m.group(1).strip()
-            if any(ch.isdigit() for ch in candidate):
-                return candidate
-        # Fallback to INV pattern
-        m_pat = re.search(r"\bINV[-_A-Za-z0-9]+\b", text)
-        if m_pat:
-            return m_pat.group(0)
-        return None
+        """Extract invoice reference identifier e.g. #INV-2026-088 (same line as its label, with a digit)."""
+        return find_invoice_number(text)
 
     def _extract_invoice_amount(self, text: str) -> Optional[float]:
         """Extract total invoice / due amount."""

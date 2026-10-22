@@ -57,7 +57,7 @@ class ContradictionDetector:
 
                         # Check reference
                         disc_ref = ContradictionRuleEngine.check_reference_discrepancy(
-                            ref_a=c.reference_id_hint,
+                            ref_a=_bank_comparable_ref(c),
                             ref_b=t.bank_reference,
                             ev_ids=[c.evidence_id] + t.evidence_ids,
                             claim_ids=[c.id],
@@ -109,6 +109,19 @@ class ContradictionDetector:
                                 observed_value="DEBIT",
                             )
                             discrepancies.append(disc_dir)
+                        elif c.claim_type == ClaimType.EXPENSE_INCURRED and t.direction == TransactionDirection.CREDIT:
+                            # A bill paid by the user should be money going out
+                            discrepancies.append(Discrepancy(
+                                id=f"DISC-DIR-{uuid.uuid4().hex[:8]}",
+                                discrepancy_type=DiscrepancyType.DIRECTION_MISMATCH,
+                                severity=DiscrepancySeverity.CRITICAL,
+                                message="Transaction direction mismatch: Expected debit outflow for a paid bill but found credit.",
+                                involved_evidence_ids=[c.evidence_id] + t.evidence_ids,
+                                involved_claim_ids=[c.id],
+                                involved_transaction_ids=[t.id],
+                                expected_value="DEBIT",
+                                observed_value="CREDIT",
+                            ))
 
         # -------------------------------------------------------------
         # 2. Contradictions from Deduplication Groups (Day 6 Context)
@@ -147,7 +160,7 @@ class ContradictionDetector:
                         disc_amt = ContradictionRuleEngine.check_amount_discrepancy(c, t, config=self.config)
                         if disc_amt:
                             discrepancies.append(disc_amt)
-                        disc_ref = ContradictionRuleEngine.check_reference_discrepancy(c.reference_id_hint, t.bank_reference, [c.evidence_id] + t.evidence_ids, [c.id], [t.id])
+                        disc_ref = ContradictionRuleEngine.check_reference_discrepancy(_bank_comparable_ref(c), t.bank_reference, [c.evidence_id] + t.evidence_ids, [c.id], [t.id])
                         if disc_ref:
                             discrepancies.append(disc_ref)
                         disc_date = ContradictionRuleEngine.check_date_discrepancy(c.claimed_date, t.known_timestamp, [c.evidence_id] + t.evidence_ids, [c.id], [t.id], self.config)
@@ -189,3 +202,17 @@ class ContradictionDetector:
                 "transactions_evaluated": len(transactions),
             },
         )
+
+
+def _bank_comparable_ref(claim) -> "Optional[str]":
+    """The claim's reference, unless it is only an invoice / bill number.
+
+    An invoice number never appears as a bank UTR, so comparing the two would flag
+    every unpaid-UTR invoice as a mismatch. Only payment references (UTR, RRN, UPI or
+    transaction IDs) are compared with the bank's reference.
+    """
+    meta = claim.metadata or {}
+    ref = claim.reference_id_hint
+    if ref and not meta.get("payment_reference") and ref == meta.get("invoice_number"):
+        return None
+    return ref

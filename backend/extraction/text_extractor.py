@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from backend.domain.claim import Claim, ClaimStatus, ClaimType
 from backend.domain.evidence import Evidence, EvidenceModality
 from backend.extraction.base import BaseExtractor
+from backend.extraction.document_fields import find_invoice_number, find_parties, find_payment_reference
 from backend.extraction.result import ExtractionResult, ExtractionStatus, ExtractionWarning
 
 
@@ -110,6 +111,13 @@ class TextClaimExtractor(BaseExtractor):
 
         # 5. Extract Counterparty Hint
         counterparty = self._extract_counterparty(raw_text, evidence.metadata)
+        parties = find_parties(raw_text)
+        invoice_number = find_invoice_number(raw_text)
+        payment_reference = find_payment_reference(raw_text)
+        if claim_type == ClaimType.INVOICE_ISSUED:
+            # An invoice is about the party it is billed to; the UTR (if printed) is what the bank shows.
+            counterparty = parties.get("client") or counterparty
+            reference_id = payment_reference or invoice_number or reference_id
 
         # 6. Extract Date Hint
         date_hint = self._extract_date_hint(raw_text, evidence.metadata, context)
@@ -135,6 +143,9 @@ class TextClaimExtractor(BaseExtractor):
             metadata={
                 "language_hint": evidence.language_hint,
                 "sender_metadata": evidence.metadata.get("sender"),
+                **({"invoice_number": invoice_number} if invoice_number else {}),
+                **({"payment_reference": payment_reference} if payment_reference else {}),
+                **{f"party_{k}": v for k, v in parties.items()},
             },
         )
 
@@ -348,23 +359,22 @@ class TextClaimExtractor(BaseExtractor):
         return None
 
     def _extract_reference_id(self, text: str) -> Optional[str]:
-        """Extract UTR, RRN, or Invoice reference numbers from text."""
-        # 1. Explicit labeled UTR/Ref e.g. "ref: 408219381920", "UTR 408219381920", "RRN: 408219381920"
-        m_ref = re.search(r"(?:ref(?:erence)?(?:\s*no\.?)?|utr|rrn|txn\s*id)\s*[:#-]?\s*([A-Za-z0-9_-]{6,24})", text, re.IGNORECASE)
-        if m_ref:
-            return m_ref.group(1).strip()
+        """Extract UTR, RRN, or Invoice reference numbers from text.
+
+        A reference must contain digits, so words like "INVOICE" are never returned.
+        """
+        # 1. Labelled UTR / RRN / UPI / transaction reference (value may be on the next line)
+        payment_ref = find_payment_reference(text)
+        if payment_ref:
+            return payment_ref
 
         # 2. Standalone 12-digit UPI RRN
         m_rrn = re.search(r"\b\d{12}\b", text)
         if m_rrn:
             return m_rrn.group(0)
 
-        # 3. Invoice Number e.g. "INV-2026-042"
-        m_inv = re.search(r"\b(?:INV|BILL)[-_A-Z0-9]{4,16}\b", text, re.IGNORECASE)
-        if m_inv:
-            return m_inv.group(0)
-
-        return None
+        # 3. Invoice / bill number e.g. "INV-2026-042"
+        return find_invoice_number(text)
 
     def _extract_counterparty(self, text: str, metadata: Dict[str, Any]) -> Optional[str]:
         """Extract party hint from metadata or phrases like 'Paid to: Rohit' or 'from Rahul'."""

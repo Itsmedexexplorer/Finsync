@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import io
+import re
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -122,9 +123,11 @@ class BankCSVAdapter(BaseIngestionAdapter):
 
         delimiter = "\t" if source_name.endswith(".tsv") or "\t" in text_content.splitlines()[0] else ","
         stream = io.StringIO(text_content)
-        reader = csv.reader(stream, delimiter=delimiter)
 
         try:
+            all_rows = list(csv.reader(stream, delimiter=delimiter))
+            header_idx = self._find_header_row(all_rows)
+            reader = iter(all_rows[header_idx:])
             raw_header = next(reader, None)
         except Exception as exc:
             return IngestionResult.create_failure(
@@ -160,7 +163,7 @@ class BankCSVAdapter(BaseIngestionAdapter):
         evidence_items: List[Evidence] = []
         errors: List[IngestionError] = []
 
-        row_index = 1  # 1-indexed (header was row 1, data starts at 2)
+        row_index = header_idx + 1  # 1-indexed file line of the header; data starts on the next line
         for raw_row in reader:
             row_index += 1
             if not raw_row or all(not cell.strip() for cell in raw_row):
@@ -247,23 +250,52 @@ class BankCSVAdapter(BaseIngestionAdapter):
             },
         )
 
+    # Units and filler that banks add to column names: "Debit (INR)", "Amount in Rs.", "Balance (₹)"
+    _UNIT_WORDS = re.compile(r"\b(?:inr|rs|rupees|in)\b|₹")
+
+    @classmethod
+    def _normalize_header(cls, header: str) -> str:
+        text = re.sub(r"\([^)]*\)", " ", header.lower())  # drop "(INR)", "(₹)", "(Dr/Cr)"
+        text = cls._UNIT_WORDS.sub(" ", text)
+        return "".join(ch for ch in text if ch.isalnum())
+
+    @classmethod
+    def _classify_header(cls, header: str) -> Optional[str]:
+        """Returns the canonical field a header stands for, or None (e.g. '#', 'Balance')."""
+        n = cls._normalize_header(header)
+        raw = header.lower()
+        if not n or "balance" in n or n in ("sno", "srno", "slno", "serialno", "no"):
+            return None
+        if n in ("drcr", "crdr", "drcrindicator", "creditdebit", "debitcredit", "indicator", "direction", "crdrindicator"):
+            return "drcr"
+        if n in cls.DATE_SYNONYMS or n.endswith("date") or n == "dated":
+            return "date"
+        if n in ("credit", "cr", "deposit", "deposits", "credits", "moneyin", "creditamount", "depositamount") \
+                or n.startswith("credit") or n.startswith("deposit"):
+            return "credit"
+        if n in ("debit", "dr", "withdrawal", "withdrawals", "debits", "moneyout", "debitamount", "withdrawalamount") \
+                or n.startswith("debit") or n.startswith("withdraw"):
+            return "debit"
+        if n in cls.REF_SYNONYMS or any(k in n for k in ("utr", "rrn", "refno", "reference", "chq", "cheque", "txnid", "transactionid", "upiref")) \
+                or re.search(r"\bref\b", raw):
+            return "reference"
+        if n in cls.NARRATION_SYNONYMS or any(k in n for k in ("narration", "description", "particular", "remark", "detail")):
+            return "narration"
+        if any(k in n for k in ("beneficiary", "payee", "payer", "remitter", "counterparty", "partyname", "party", "name", "paidto", "receivedfrom")):
+            return "counterparty"
+        if n in ("mode", "paymentmode", "txnmode", "transactionmode", "channel", "paymentmethod", "method", "type", "txntype", "transactiontype"):
+            return "mode"
+        if n in cls.AMOUNT_SYNONYMS or "amount" in n or n in ("amt", "value"):
+            return "amount"
+        return None
+
     def _detect_columns(self, headers: List[str]) -> Dict[str, str]:
         """Maps canonical field names (date, narration, amount, etc.) to the actual header names."""
         mapping: Dict[str, str] = {}
         for header in headers:
-            normalized = "".join(filter(str.isalnum, header)).lower()
-            if normalized in self.DATE_SYNONYMS and "date" not in mapping:
-                mapping["date"] = header
-            elif normalized in self.NARRATION_SYNONYMS and "narration" not in mapping:
-                mapping["narration"] = header
-            elif normalized in self.REF_SYNONYMS and "reference" not in mapping:
-                mapping["reference"] = header
-            elif normalized in ("credit", "cr", "deposit") and "credit" not in mapping:
-                mapping["credit"] = header
-            elif normalized in ("debit", "dr", "withdrawal") and "debit" not in mapping:
-                mapping["debit"] = header
-            elif normalized in self.AMOUNT_SYNONYMS and "amount" not in mapping:
-                mapping["amount"] = header
+            field = self._classify_header(header)
+            if field and field not in mapping:
+                mapping[field] = header
         return mapping
 
     def _extract_normalized_fields(
@@ -272,7 +304,7 @@ class BankCSVAdapter(BaseIngestionAdapter):
         column_mapping: Dict[str, str],
     ) -> Dict[str, Optional[str]]:
         """Extracts normalized key fields from the row dictionary."""
-        return {
+        fields: Dict[str, Optional[str]] = {
             "date": row_dict.get(column_mapping.get("date", ""), None),
             "narration": row_dict.get(column_mapping.get("narration", ""), None),
             "amount": row_dict.get(column_mapping.get("amount", ""), None),
@@ -280,3 +312,25 @@ class BankCSVAdapter(BaseIngestionAdapter):
             "debit": row_dict.get(column_mapping.get("debit", ""), None),
             "reference": row_dict.get(column_mapping.get("reference", ""), None),
         }
+        # Optional columns some banks export separately from the narration.
+        if "counterparty" in column_mapping:
+            fields["counterparty"] = row_dict.get(column_mapping["counterparty"]) or None
+        if "mode" in column_mapping:
+            fields["mode"] = row_dict.get(column_mapping["mode"]) or None
+        if "drcr" in column_mapping:
+            fields["drcr"] = row_dict.get(column_mapping["drcr"]) or None
+        # No narration column: build one from mode / reference / party, the way banks write it.
+        if not fields["narration"]:
+            parts = [fields.get("mode"), fields.get("reference"), fields.get("counterparty")]
+            built = "/".join(p.strip() for p in parts if p and p.strip())
+            fields["narration"] = built or None
+        return fields
+
+    def _find_header_row(self, rows: List[List[str]]) -> int:
+        """Index of the header row. Banks often put account details above the table."""
+        for idx, row in enumerate(rows[:25]):
+            cells = [c.strip() for c in row]
+            mapping = self._detect_columns(cells)
+            if "date" in mapping and any(k in mapping for k in ("amount", "credit", "debit")):
+                return idx
+        return 0

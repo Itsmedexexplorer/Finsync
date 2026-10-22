@@ -21,6 +21,8 @@ FinSync works on fixed rules: the same files always give the same result, and ev
 
 - Upload a bank statement with invoices, chat exports or screenshots, or paste a message
 - **Reads images with OCR**: payment screenshots (GPay, PhonePe, Paytm), photos of receipts and scanned PDFs
+- **Bank statements as CSV or PDF**: column names are recognised even with extras like "Debit (INR)" or "UTR / Ref No."; PDF statements (text or scanned) are read row by row
+- **Bills you paid, not just money owed to you**: a supplier's bill whose UTR (or name and exact amount) shows up as money going out is checked as a bill paid
 - Automatic matching of each payment claim to a bank entry (by amount, date, UTR/reference, invoice number and who paid)
 - A clear status for every check:
 
@@ -46,8 +48,8 @@ FinSync works on fixed rules: the same files always give the same result, and ev
 
 | File | Format |
 |---|---|
-| Bank statement | CSV (net-banking export or Razorpay settlement report) |
-| Invoices and receipts | PDF (text or scanned), or a photo (PNG / JPG) |
+| Bank statement | CSV or PDF from net-banking (text or scanned), or a Razorpay settlement report |
+| Invoices, bills and receipts | PDF (text or scanned), or a photo (PNG / JPG) |
 | Chats | TXT export, or paste a message |
 | Payment screenshots | PNG / JPG |
 
@@ -58,7 +60,7 @@ Up to 20 files per check, 15 MB each.
 ## How to use
 
 1. Sign up and sign in.
-2. Click **New check** and upload your bank statement plus any invoices, chats or screenshots.
+2. Click **New check** and upload your bank statement (CSV or PDF) plus any invoices, bills, chats or screenshots.
 3. Read the result: status, amounts and anything that didn't add up.
 4. If FinSync asks a question, pick the answer that fits.
 5. Send a follow-up if money is still due, and track totals on the **People** page.

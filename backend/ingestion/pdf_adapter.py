@@ -17,6 +17,8 @@ from PIL import Image
 
 from backend.domain.evidence import Evidence, EvidenceModality, EvidenceSourceType
 from backend.ingestion.base import BaseIngestionAdapter
+from backend.ingestion.csv_adapter import BankCSVAdapter
+from backend.ingestion.pdf_statement import looks_like_statement, read_lines, statement_to_csv
 from backend.ingestion.result import IngestionError, IngestionResult, IngestionStatus
 
 
@@ -141,6 +143,11 @@ class PDFDocumentAdapter(BaseIngestionAdapter):
         if is_scanned:
             page_images_b64 = self._extract_page_images(reader)
 
+        # Bank statements: turn the statement's table into bank rows, exactly like a CSV export.
+        statement = self._read_statement(reader, full_extracted_text, page_images_b64, source_name, metadata)
+        if statement is not None:
+            return statement
+
         # Construct raw payload
         if is_scanned:
             raw_payload = f"[SCANNED_PDF_DOCUMENT: {source_name} | Pages: {page_count} | Size: {len(pdf_bytes)} bytes]"
@@ -195,6 +202,50 @@ class PDFDocumentAdapter(BaseIngestionAdapter):
                 "page_images_extracted": len(page_images_b64),
             },
         )
+
+    def _read_statement(
+        self,
+        reader: pypdf.PdfReader,
+        plain_text: str,
+        page_images_b64: List[Dict[str, Any]],
+        source_name: str,
+        metadata: Optional[Dict[str, Any]],
+    ) -> Optional[IngestionResult]:
+        """IngestionResult of bank rows when the PDF is a bank statement, else None."""
+        csv_text: Optional[str] = None
+        how = ""
+        if plain_text:
+            layout_pages = []
+            for page in reader.pages:
+                try:
+                    layout_pages.append(page.extract_text(extraction_mode="layout") or "")
+                except Exception:
+                    layout_pages.append("")
+            csv_text = statement_to_csv("\n".join(layout_pages), plain_text, source_name)
+            how = "pdf_text"
+        elif page_images_b64 and looks_like_statement("", source_name):
+            # Scanned statement: read each page with OCR, then read rows line by line.
+            from backend.extraction.ocr_extractor import ocr_available, read_image_text
+
+            if ocr_available():
+                try:
+                    text = "\n".join(
+                        read_image_text(base64.b64decode(p["image_b64"])) for p in page_images_b64[:10]
+                    )
+                    csv_text = read_lines(text)
+                    how = "pdf_ocr"
+                except Exception:
+                    csv_text = None
+        if not csv_text:
+            return None
+
+        result = BankCSVAdapter().ingest_payload(
+            csv_text,
+            source_name=source_name,
+            source_type=EvidenceSourceType.BANK_CSV,
+            metadata={**(metadata or {}), "statement_read_from": how},
+        )
+        return result if result.evidence_items else None
 
     def _extract_page_images(self, reader: pypdf.PdfReader) -> List[Dict[str, Any]]:
         """Extract embedded images from PDF pages for VLM extraction.

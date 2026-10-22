@@ -16,6 +16,7 @@ from __future__ import annotations
 import time
 from typing import Any, Dict, List, Optional
 
+from backend.case_processing.bill_direction import infer_paid_bills
 from backend.case_processing.context import CaseProcessingContext
 from backend.case_processing.models import CaseInput, PipelineStage, StageExecutionRecord
 from backend.case_processing.result import CaseProcessingResult
@@ -134,6 +135,9 @@ class FinanceControllerPipeline:
                     else:
                         remaining_claims.append(c)
                 extracted_claims = remaining_claims
+
+            # Invoices the bank shows as paid OUT are bills the user paid, not money owed to them.
+            extracted_claims = infer_paid_bills(extracted_claims, extracted_txns)
 
         ctx.claims = extracted_claims
         ctx.transactions = extracted_txns

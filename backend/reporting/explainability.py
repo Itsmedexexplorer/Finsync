@@ -94,6 +94,14 @@ class ExplainabilityEngine:
         lines: List[str] = []
         status = reconciliation_result.status
         entity_name = entity.canonical_name if entity else (claims[0].counterparty_hint if claims and claims[0].counterparty_hint else "Unknown Entity")
+        # Speak only about the bank entries this result is actually tied to, not the whole statement.
+        linked_ids = set(reconciliation_result.transaction_ids or [])
+        if linked_ids:
+            linked = [t for t in transactions if t.id in linked_ids]
+            transactions = linked or transactions
+        linked_ev = set(getattr(reconciliation_result, "evidence_ids", None) or [])
+        if linked_ev:
+            evidence = [e for e in evidence if e.id in linked_ev] or evidence
 
         if status == ReconciliationStatus.CONFIRMED:
             lines.append(f"Full financial reconciliation was confirmed for {entity_name}.")
