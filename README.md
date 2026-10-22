@@ -3,8 +3,10 @@
 </p>
 
 <h1 align="center">FinSync</h1>
-<p align="center"><b>Find out who has really paid you.</b><br>
-FinSync checks invoices, payment screenshots and WhatsApp messages against your bank statement and tells you, in plain words, what actually reached your account.</p>
+<p align="center"><b>Know who has really paid you.</b><br>
+FinSync checks invoices, payment messages and screenshots against your bank statement and tells you, in plain words, what actually reached your account.</p>
+
+<p align="center"><a href="https://finsync-vv9c.onrender.com">Live app</a> · Rule-based · No AI · 417 automated tests</p>
 
 ---
 
@@ -17,35 +19,52 @@ Small businesses, agencies and freelancers in India get payment proof from all o
 - A PDF invoice from Zoho or Tally
 - The bank statement, which is the only record that shows money actually arrived
 
-A message or screenshot only shows that someone says they paid. FinSync treats your **bank statement as the source of truth** and checks every claim against it.
+A message or screenshot only shows that someone *says* they paid. FinSync treats your **bank statement as the source of truth** and checks every claim against it.
 
-For each check you get:
+FinSync is **not AI-powered**. Reading files, matching payments, working out amounts and choosing a status are all done by fixed rules, so the same files always give the same result and every number can be traced back to a record.
 
-| You see | What it means |
+## What you get for each check
+
+| Status | What it means |
 |---|---|
 | **Matched** | The payment is in your bank statement, for the right amount. |
 | **Part paid** | Some money arrived, but less than what was billed or promised. |
-| **Mismatch** | Your records disagree with the bank (amount, reference number, direction…). |
+| **Mismatch** | Your records disagree with the bank (amount, reference number, person, date or direction of money). |
 | **No bank proof** | Someone says they paid, but there's no matching bank entry. |
 | **Unclear** | More than one bank entry could match, so you need to pick. |
-| **Duplicate** | The same payment appears twice (e.g. screenshot + bank line). It's only counted once. |
+| **Duplicate** | The same payment appears twice (e.g. a message and a bank line). It's only counted once. |
 | **Unmatched** | A bank entry or bill with nothing to pair it with yet. |
 
-Each check also shows **expected vs. received vs. still due**, a list of **what didn't add up**, **next steps**, and an **Ask** box where you can ask questions about the check in plain English. Answers come only from your own records.
+Each check also shows:
+
+- **expected vs. received vs. still due**
+- a list of **what didn't add up**, with how serious each issue is
+- **next steps**
+- an **Ask** box for quick questions about the check, such as *why does this need review?*, *how much is still due?* or *what proof is there?* Answers are built from the check's own facts using fixed templates, so they can't invent numbers.
 
 ## How to use it
 
 1. **Sign up.** Every account gets its own private workspace, and it starts empty.
 2. **Take the tour.** A short walkthrough opens on your first visit and points out each part of the app. You can replay it anytime from *How it works* or *Account*.
 3. **Start a check.** Tap **New check** and add:
-   - your **bank statement** (CSV export from net-banking or a Razorpay settlement report); this is the most important file
-   - any **invoices** (PDF), **payment screenshots** (PNG/JPG/JPEG) or **chat exports** (TXT). You can also paste a message.
+   - your **bank statement** as a CSV (net-banking export or a Razorpay settlement report). This is the most important file.
+   - any **invoices** (PDF), **chat exports** (TXT) or **payment screenshots** (PNG/JPG/JPEG). You can also paste a message.
    - up to 20 files per check, 15 MB each.
-   - Bank CSVs, text-based PDFs and chat text are read by built-in parsers. FinSync doesn't read text inside images, so a **screenshot** or **scanned PDF** is recorded as "someone says they paid" without an amount. For the amount to be checked, paste the payment message or add a text PDF.
 4. **Read the verdict.** FinSync reads the files, matches every claim to a bank entry and shows the result.
-5. **Answer one question.** If something doesn't add up, FinSync asks you a plain question (e.g. "Did Vikram pay you only ₹12,000?") and shows what was claimed next to what your bank shows, with the difference highlighted. Pick the answer that fits and add a note if you like.
-6. **Follow up.** Create a payment reminder, a dispute notice, a request for proof, or a draft accounting entry. FinSync writes the draft from the facts in the check; you copy it and send it yourself.
+5. **Answer one question.** If something doesn't add up, FinSync asks you a plain question (e.g. "Did Vikram pay you only ₹12,000?") and shows what was claimed next to what your bank shows, with the difference highlighted. Pick the answer that fits and add a note if you like. Your answer is saved with the check; it never changes the bank figures.
+6. **Follow up.** Create a payment reminder, a dispute notice, a request for proof, or a draft accounting entry. FinSync fills in the draft from the facts in the check; you copy it and send it yourself.
 7. **Track people.** The *People* page totals what each customer or vendor has paid and still owes across all your checks.
+
+### What FinSync can read
+
+| File | How it's read |
+|---|---|
+| Bank statement (CSV) | Each row becomes a bank transaction (date, amount, direction, UTR/reference, narration). |
+| Invoice (PDF with selectable text) | Invoice number, amount and date are picked out of the text. |
+| Chat export (TXT) or pasted message | Payment claims like "35,000 GPay kar diya" are picked out of the text: English, Hinglish and common phrases in Hindi, Marathi, Tamil, Telugu, Kannada and Bengali. |
+| Screenshot (PNG/JPG) or scanned PDF | **Text inside images isn't read.** The file is kept as evidence that someone says they paid, but without an amount. To have the amount checked, paste the payment message or add a text PDF. |
+
+### Pages
 
 | Page | What it's for |
 |---|---|
@@ -62,15 +81,15 @@ The app is responsive: it has a bottom tab bar on phones and a sidebar on larger
 ## How it works under the hood
 
 ```
-Browser (frontend/)                     Server (backend/, FastAPI)
+Browser (frontend/)                     Server (backend/, Python + FastAPI)
 ┌───────────────────────┐   HTTPS +     ┌──────────────────────────────────────────────┐
-│ Plain HTML/CSS/JS app │  Supabase JWT │ Auth middleware → verifies the token with     │
-│ • Supabase sign-in    │ ────────────▶ │   Supabase, opens that user's workspace       │
-│ • Hash router         │               │                                              │
-│ • Guided tour         │               │ Pipeline (per check)                         │
-└───────────────────────┘               │  1 Ingest files (CSV, PDF, image, text)      │
-                                        │  2 Extract claims; bank rows → transactions  │
-                                        │  3 Resolve who's who (names, UPI, GSTIN, PAN)│
+│ Plain HTML/CSS/JS app │  Supabase JWT │ Auth middleware → verifies the token with    │
+│ (no framework, no     │ ────────────▶ │   Supabase, opens that user's workspace      │
+│  build step)          │               │                                              │
+│ • Supabase sign-in    │               │ Rule-based pipeline (per check)              │
+│ • Hash router         │               │  1 Ingest files (CSV, PDF, image, text)      │
+│ • Guided tour         │               │  2 Extract claims; bank rows → transactions  │
+└───────────────────────┘               │  3 Resolve who's who (names, UPI, GSTIN, PAN)│
                                         │  4 Match claims ↔ bank (1:1, 1:N, N:1)       │
                                         │  5 Remove duplicates across files            │
                                         │  6 Detect contradictions                     │
@@ -84,28 +103,39 @@ Browser (frontend/)                     Server (backend/, FastAPI)
                                           Supabase Storage (private "workspaces" bucket)
 ```
 
-- **No AI, only rules.** FinSync is not AI-powered. Reading files, matching, amounts and statuses all come from fixed rules, so the same input always gives the same answer.
-- **Explanations are rule-based too.** The verdict summary and the *Ask* answers are built from the check's own facts using templates, not written by a chatbot, so they can't invent numbers.
-- **Matching signals:** amount, date, UTR/reference number, invoice number, who paid (name, UPI ID, GSTIN, PAN) and direction of money.
-- **Your data is kept separate.** Each user has their own workspace (`data/workspaces/<user-id>/`). Users can't see each other's checks or people.
-- **Your data survives restarts.** Free hosting wipes the server's disk on every restart. After each change, FinSync uploads a snapshot of your workspace to a private Supabase Storage bucket and restores it automatically the next time you sign in.
+- **Rules, not AI.** Every stage above is deterministic code: parsers, matching rules and fixed thresholds. There are no model calls and no API keys for AI services.
+- **What matching looks at:** amount, date, UTR/reference number, invoice number, who paid (name, UPI ID, GSTIN, PAN) and the direction of money. It can pair one claim with one bank entry, one invoice with several bank entries that add up to it, or one bank entry with several invoices it covers.
+- **Each user's data is kept separate.** Every user has their own workspace (`data/workspaces/<user-id>/`) with its own SQLite database. Users can't see each other's checks or people.
+- **Data survives restarts.** Free hosting wipes the server's disk on every restart. After each change, FinSync uploads a snapshot of your workspace to a private Supabase Storage bucket and restores it automatically the next time you sign in.
 - **Uploaded files aren't kept.** They're written to a temp folder, processed and deleted. Only the results are stored.
-- **History can't be changed quietly.** Review activity is hash-chained, and *History → Verify* checks that nothing was edited.
+- **History can't be changed quietly.** Review activity is hash-chained (SHA-256), and *History → Verify* checks that nothing was edited.
 
-Main code locations:
+### Tech stack
+
+| Part | What's used |
+|---|---|
+| Frontend | Plain HTML, CSS and JavaScript (`frontend/`) |
+| Backend | Python 3.10+, FastAPI, Pydantic, pypdf |
+| Storage | SQLite (one database per user), backed up to Supabase Storage |
+| Sign-in | Supabase Auth |
+| Hosting | Render (free tier), or any Docker host |
+| Tests | pytest (417 tests) |
+
+### Main code locations
 
 | Path | What's there |
 |---|---|
 | `frontend/` | The whole web app: `index.html`, `styles.css`, `app.js`, logo/icons |
-| `backend/api/` | FastAPI app, routes, auth middleware (`auth.py`), web-app endpoints (`user_routes.py`) |
+| `backend/api/` | FastAPI app, routes, auth middleware (`auth.py`), web-app endpoints (`user_routes.py`), rate limits |
 | `backend/workspace.py` | Per-user workspaces |
 | `backend/cloud_sync.py` | Backup/restore to Supabase Storage |
-| `backend/case_processing/` | The 8-stage pipeline |
+| `backend/case_processing/` | Runs the 8-stage pipeline |
 | `backend/ingestion`, `extraction`, `entity_resolution`, `transaction_matching`, `deduplication`, `contradiction_detection`, `reconciliation`, `reporting` | One folder per pipeline stage |
-| `backend/review`, `backend/controller` | Review workflow, next-step suggestions, follow-up drafts and journal entries |
+| `backend/review`, `backend/controller` | Review workflow, Ask answers, next-step suggestions, follow-up drafts and journal entries |
 | `backend/storage`, `portfolio`, `cross_case`, `provenance`, `domain` | Database layer, totals across checks, people history, evidence trail, shared data models |
+| `supabase/` | Auth settings, branded email templates, sign-up limits migration |
 | `docs/` | Technical notes for each subsystem |
-| `tests/` | 400+ automated tests |
+| `tests/` | Automated tests |
 
 ## Security
 
@@ -114,7 +144,7 @@ Main code locations:
   - name: 2–50 characters, letters only (spaces, dots, apostrophes, hyphens allowed)
   - email: a complete address, at most 254 characters, with hints for typos like `gmial.com`
   - password: 8–72 characters with an uppercase letter, a lowercase letter, a number and a special character
-  - Name and email length are also checked by a database trigger (`supabase/migrations/`).
+  - Name and email are also checked by a database trigger (`supabase/migrations/`).
 - **Rate limits**
   - Browser: 5 wrong passwords, then a lockout of 30s that doubles each time, up to 15 minutes.
   - Supabase: 20 sign-in/sign-up attempts per 5 minutes per IP, and 60 seconds between confirmation or reset emails.
@@ -163,18 +193,18 @@ No database tables are needed: FinSync stores each user's workspace itself and u
 python -m pytest
 ```
 
-There are 417 tests; all pass.
+All 417 tests pass.
 
 ## Deploy
 
-### Render (recommended, free tier)
+### Render (free tier)
 
-The repo includes a `render.yaml` blueprint.
+The repo includes a `render.yaml` blueprint. The live app runs at https://finsync-vv9c.onrender.com.
 
 1. Push this project to your own GitHub repository.
 2. In Render: **New → Blueprint**, then pick the repository.
 3. When asked, enter `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`.
-4. Deploy. Then add the Render URL as the *Site URL* and as a *Redirect URL* in Supabase → Authentication → URL Configuration (or edit `site_url` in `supabase/config.toml` and run `supabase config push`). The live app runs at https://finsync-vv9c.onrender.com.
+4. Deploy. Then add the Render URL as the *Site URL* and as a *Redirect URL* in Supabase → Authentication → URL Configuration (or edit `site_url` in `supabase/config.toml` and run `supabase config push`).
 
 On the free plan the service sleeps after 15 minutes without traffic, so the first request after that takes about 30 seconds. User data isn't lost when it sleeps because it's restored from Supabase Storage.
 
@@ -185,19 +215,19 @@ docker build -t finsync .
 docker run -p 8000:8000 --env-file .env finsync
 ```
 
-Run **a single instance**. Workspaces are cached on local disk, so running several replicas behind a load balancer needs a shared volume.
+Run **a single instance**. Workspaces are cached on local disk and rate limits are kept in memory, so running several replicas behind a load balancer needs a shared volume and a shared rate-limit store.
 
 ## Configuration
 
-All settings are environment variables. `.env.example` lists them with comments. The main ones:
+All settings are environment variables; `.env.example` lists them with comments. The `VERITY_` prefix is kept from the codebase FinSync grew out of. The main ones:
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY` | empty | Turn on sign-in. Empty means local single-user mode |
 | `SUPABASE_SERVICE_ROLE_KEY` | empty | Server-only. Turns on workspace backups to Supabase Storage |
-| `VERITY_ENABLE_DEMO` | `false` | Expose the built-in sample scenarios and benchmark API (for development only) |
-| `VERITY_ENABLE_DOCS` | `true` | Interactive API docs at `/docs` |
 | `VERITY_ENV` | `development` | `production` refuses API calls (`503`) if Supabase isn't configured |
+| `VERITY_ENABLE_DOCS` | `true` | Interactive API docs at `/docs` (off on the live site) |
+| `VERITY_ENABLE_DEMO` | `false` | Expose the built-in sample scenarios and benchmark API (for development only) |
 | `VERITY_MAX_UPLOAD_MB` | `15` | Per-file upload limit |
 | `VERITY_MAX_FILES_PER_CASE` | `20` | Files allowed in one check |
 | `VERITY_BACKUP_BUCKET` | `workspaces` | Private Supabase Storage bucket for workspace backups |
