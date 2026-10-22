@@ -1,1 +1,1 @@
-"""VERITY Test Suite."""
+"""Finsync Test Suite."""
