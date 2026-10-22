@@ -1,7 +1,6 @@
 # VERITY Security & Hardening Architecture
 
 **Day 12 Milestone: Production Hardening, Input Safety, and Defensive Controls**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

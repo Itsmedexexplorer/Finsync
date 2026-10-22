@@ -1,4 +1,4 @@
-"""Tests for the Track 04 Benchmark Batch Reconciliation API endpoint."""
+"""Tests for the Benchmark Batch Reconciliation API endpoint."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ def client() -> TestClient:
 
 
 def test_benchmark_endpoint_returns_at_least_50_cases(client: TestClient) -> None:
-    """Test requirement 1: Endpoint returns >= 50 cases (Track 04 requirement)."""
+    """Test requirement 1: Endpoint returns >= 50 cases."""
     response = client.post("/api/v1/benchmark/run")
     assert response.status_code == 200
     data = response.json()

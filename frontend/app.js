@@ -2116,7 +2116,6 @@ function viewHelp(view) {
       <section class="card faq">
         <details><summary>Why is the bank statement so important?</summary><p>A screenshot or a "payment done" message is just a claim. Only your bank statement proves money actually arrived. FinSync uses the statement as the source of truth and checks everything else against it.</p></details>
         <details><summary>Which bank statement format works?</summary><p>A CSV export from your net-banking (HDFC, ICICI, SBI, Axis and most others) or a Razorpay settlement report. Columns like Date, Narration, Ref No, Withdrawal and Deposit are recognised automatically.</p></details>
-        <details><summary>Does FinSync use AI to calculate amounts?</summary><p>No. All matching and maths is rule-based and repeatable. AI is only used to help read messy text, and every answer is tied back to your records.</p></details>
         <details><summary>What does "Review" mean?</summary><p>When something doesn't add up, FinSync asks you to decide. Approve it, mark it wrong, or keep it open until you get more proof. Your decision never changes the underlying numbers — it's recorded alongside them.</p></details>
         <details><summary>Does FinSync send emails for me?</summary><p>No. Follow-ups are drafts. You copy them and send them yourself from your email or WhatsApp.</p></details>
         <details><summary>Who can see my data?</summary><p>Only you. Every account has its own private workspace. Uploaded files are deleted right after processing; only the results are kept.</p></details>

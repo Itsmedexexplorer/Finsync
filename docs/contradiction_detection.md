@@ -1,7 +1,6 @@
 # VERITY Contradiction Detection Subsystem
 
 **Day 7 Milestone: Deterministic Contradiction & Discrepancy Detection**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

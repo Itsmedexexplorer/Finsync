@@ -1,8 +1,6 @@
 # VERITY — Golden Demo & 3–5 Minute Judge Walkthrough Guide
 
 **Project:** VERITY — "Financial Truth, Reconstructed"  
-**Hackathon:** Razorpay AI Buildathon 2026  
-**Track:** AI Finance Controller  
 **Version:** Day 20 Golden Release  
 
 ---

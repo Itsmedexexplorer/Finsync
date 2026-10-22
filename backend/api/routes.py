@@ -140,10 +140,10 @@ def run_demo_case(
 
 
 # -------------------------------------------------------------
-# TRACK 04 BENCHMARK BATCH RECONCILIATION ENDPOINTS
+# BENCHMARK BATCH RECONCILIATION ENDPOINTS
 # -------------------------------------------------------------
 
-@router.post("/api/v1/benchmark/run", response_model=BenchmarkRunResponse, tags=["Track 04 Benchmark"], dependencies=[Depends(require_demo_enabled)])
+@router.post("/api/v1/benchmark/run", response_model=BenchmarkRunResponse, tags=["Benchmark"], dependencies=[Depends(require_demo_enabled)])
 def run_benchmark_batch(
     service: CaseProcessingService = Depends(get_case_service),
 ) -> BenchmarkRunResponse:

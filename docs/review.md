@@ -1,7 +1,6 @@
 # VERITY Human Review, Case Investigation & Audit Workflow
 
 **Day 14 Milestone: Human Review, Case Investigation & Tamper-Evident Audit Subsystem**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

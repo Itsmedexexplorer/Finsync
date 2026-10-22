@@ -1,7 +1,6 @@
 # VERITY AI Finance Controller & Decision Intelligence
 
 **Day 13 Milestone: Explainable AI Controller, Decision Intelligence & Grounded Explainability**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

@@ -1,7 +1,6 @@
 # VERITY Reliability & Resilience Engineering
 
 **Day 12 Milestone: Production Hardening & System Reliability**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

@@ -1,7 +1,6 @@
 # VERITY Entity Resolution Subsystem
 
 **Day 4 Milestone: Deterministic Multi-Signal Entity Resolution**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

@@ -1,7 +1,6 @@
 # VERITY Financial Reconciliation Subsystem
 
 **Day 8 Milestone: Deterministic Financial Reconciliation & Truth Reconstruction**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

@@ -86,7 +86,6 @@ class InfoResponse(BaseModel):
     """System information, supported modalities, and pipeline stage capabilities."""
     app_name: str = "FinSync — Payment checks against your bank statement"
     version: str = "0.1.0-day11"
-    track: str = "AI Finance Controller (Razorpay AI Buildathon 2026)"
     available_pipeline_stages: List[str] = [
         "INGESTION",
         "EXTRACTION",
@@ -179,7 +178,7 @@ class CaseResponse(BaseModel):
 
 
 # -------------------------------------------------------------
-# TRACK 04 BENCHMARK BATCH RECONCILIATION MODELS
+# BENCHMARK BATCH RECONCILIATION MODELS
 # -------------------------------------------------------------
 
 class BenchmarkCaseSummary(BaseModel):
@@ -199,7 +198,7 @@ class BenchmarkCaseSummary(BaseModel):
 
 
 class BenchmarkRunResponse(BaseModel):
-    """Comprehensive, dynamically computed results for the Track 04 benchmark batch."""
+    """Comprehensive, dynamically computed results for the benchmark batch."""
     total_cases: int = Field(..., description="Total synthetic cases evaluated in batch")
     total_evidence_items: int = Field(default=0, description="Total root evidence items processed")
     total_claims: int = Field(default=0, description="Total extracted claims evaluated")

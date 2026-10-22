@@ -1,7 +1,6 @@
 # VERITY Evidence Ingestion Subsystem
 
 **Day 2 Milestone: Evidence Ingestion & Normalization**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

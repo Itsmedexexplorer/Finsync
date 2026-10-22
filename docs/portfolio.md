@@ -1,7 +1,6 @@
 # VERITY Financial Case Portfolio & Operations Intelligence
 
 **Day 15 Milestone: Financial Case Portfolio & Operations Intelligence Layer**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

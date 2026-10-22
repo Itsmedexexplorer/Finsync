@@ -1,7 +1,6 @@
 # VERITY Finance Controller API Documentation
 
 **Day 11 Milestone: Production API Layer & System Endpoints**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 
@@ -60,7 +59,6 @@ Returns application capabilities, supported modalities, and pipeline stage inven
 {
   "app_name": "VERITY — Financial Truth, Reconstructed",
   "version": "0.1.0-day11",
-  "track": "AI Finance Controller (Razorpay AI Buildathon 2026)",
   "available_pipeline_stages": [
     "INGESTION",
     "EXTRACTION",

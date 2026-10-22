@@ -24,7 +24,6 @@ def test_info_endpoint(client: TestClient) -> None:
     assert response.status_code == 200
     data = response.json()
     assert "FinSync" in data["app_name"]
-    assert "AI Finance Controller" in data["track"]
     assert len(data["available_pipeline_stages"]) == 8
     assert "INGESTION" in data["available_pipeline_stages"]
     assert "REPORTING" in data["available_pipeline_stages"]

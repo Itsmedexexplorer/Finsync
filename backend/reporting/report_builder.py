@@ -244,5 +244,5 @@ class FinancialTruthReportBuilder:
             unresolved_items=unresolved_items,
             recommended_actions=recommended_actions,
             provenance=prov_refs,
-            metadata={"buildathon_track": "AI Finance Controller", "day": "Day 9"},
+            metadata={},
         )

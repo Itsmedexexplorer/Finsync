@@ -51,7 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(
         title="FinSync — Payment checks against your bank statement",
-        description="Multimodal Financial Reconciliation Engine & AI Finance Controller API (Razorpay AI Buildathon 2026)",
+        description="Rule-based payment reconciliation API: checks invoices, payment messages and screenshots against your bank statement.",
         version=cfg.api_version,
         docs_url="/docs" if cfg.enable_docs else None,
         redoc_url="/redoc" if cfg.enable_docs else None,

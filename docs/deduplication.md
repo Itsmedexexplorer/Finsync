@@ -1,7 +1,6 @@
 # VERITY Cross-Modal Deduplication Subsystem
 
 **Day 6 Milestone: Deterministic Cross-Modal Evidence Deduplication & Event Grouping**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

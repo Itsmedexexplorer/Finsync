@@ -1,7 +1,6 @@
 # VERITY Transaction Matching Subsystem
 
 **Day 5 Milestone: Deterministic Multi-Signal Transaction Matching**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

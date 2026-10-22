@@ -1,7 +1,6 @@
 # VERITY Multimodal Evidence Extraction Subsystem
 
 **Day 17: Real Multimodal Evidence Intelligence**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

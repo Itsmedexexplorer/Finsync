@@ -1,7 +1,6 @@
 # VERITY End-to-End Finance Controller Pipeline Subsystem
 
 **Day 10 Milestone: End-to-End Finance Controller Orchestration**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

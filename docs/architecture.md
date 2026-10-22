@@ -1,7 +1,6 @@
 # VERITY System Architecture
 
 **VERITY — Financial Truth, Reconstructed**
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 

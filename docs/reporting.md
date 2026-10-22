@@ -1,7 +1,6 @@
 # VERITY Financial Truth Reporting & Explainability Subsystem
 
 **Day 9 Milestone: Explainable Financial Truth & Case Reporting**  
-*Razorpay AI Buildathon 2026 | Track: AI Finance Controller*
 
 ---
 
