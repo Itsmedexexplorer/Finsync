@@ -190,7 +190,15 @@ class ReconciliationEngine:
                         expected_amt = round(max(valid_claim_amts), 2)
         else:
             valid_claim_amts = [c.claimed_amount for c in claims if c.claimed_amount is not None]
-            if valid_claim_amts:
+            refs = {(c.reference_id_hint or "").strip().upper() for c in claims}
+            one_payment = (
+                len(claims) > 1 and len(refs) == 1 and "" not in refs
+                and len({c.claim_type for c in claims}) == 1
+            )
+            if valid_claim_amts and one_payment:
+                # Several claims about one payment (same UTR) disagree; they are compared, not added up.
+                expected_amt = round(max(valid_claim_amts), 2)
+            elif valid_claim_amts:
                 expected_amt = round(sum(valid_claim_amts), 2)
             elif match_relationships:
                 expected_amt = round(match_relationships[0].target_amount, 2)

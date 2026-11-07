@@ -267,3 +267,14 @@ def test_chat_sender_names_the_check():
     assert t._extract_counterparty("Ramesh Traders: Payment of Rs 35,000 done", {}) == "Ramesh Traders"
     assert t._extract_counterparty("[15/08/26, 9:12 PM] Meena: sent 15,000", {}) == "Meena"
     assert t._extract_counterparty("Total: 5,000\nThanks", {}) is None
+
+
+def test_conflicting_claims_for_one_payment_are_not_added_up(client):
+    data = _post(
+        client,
+        ("bank.csv", BANK_FOUR_ROWS, "text/csv"),
+        ("a.txt", b"Ramesh Traders: paid Rs 35,000 via GPay, ref 408219381920", "text/plain"),
+        ("b.txt", b"Ramesh Traders: paid Rs 40,000 via GPay, ref 408219381920", "text/plain"),
+    )
+    assert data["status"] == "CONTRADICTED"
+    assert data["financial_summary"]["claimed_amount"] == 40000.0
