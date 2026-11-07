@@ -217,6 +217,11 @@ class ReconciliationEngine:
         if dedup_group and dedup_group.status == DeduplicationStatus.DUPLICATE_EVIDENCE_CONTENT:
             supporting_sigs.append("CRYPTOGRAPHIC_CONTENT_DUPLICATE")
 
+        # An unclear check has several possible bank lines; none of them counts as received
+        # until the user picks one, so nothing is matched yet.
+        if status == ReconciliationStatus.AMBIGUOUS:
+            matched_amt = 0.0
+
         # 5. Calculate Outstanding Amount
         outstanding_amt: float = 0.0
         if expected_amt is not None:
@@ -224,7 +229,11 @@ class ReconciliationEngine:
                 outstanding_amt = max(0.0, round(expected_amt - matched_amt, 2))
             elif status == ReconciliationStatus.CONFIRMED:
                 outstanding_amt = 0.0
-            elif status in (ReconciliationStatus.UNVERIFIABLE, ReconciliationStatus.CONTRADICTED):
+            elif status in (
+                ReconciliationStatus.UNVERIFIABLE,
+                ReconciliationStatus.CONTRADICTED,
+                ReconciliationStatus.AMBIGUOUS,
+            ):
                 outstanding_amt = expected_amt
 
         # 6. Calculate Confidence

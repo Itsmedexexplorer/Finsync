@@ -246,3 +246,15 @@ def test_same_message_uploaded_twice_is_still_matched(client):
     )
     assert data["status"] == "CONFIRMED"
     assert data["financial_summary"]["matched_amount"] == 35000.0
+
+
+def test_unclear_check_counts_nothing_as_received_yet(client):
+    bank = (
+        b"Date,Narration,Ref No,Withdrawal,Deposit,Balance\n"
+        b"10/09/2026,UPI/CREDIT,511122223333,,15000.00,115000.00\n"
+        b"11/09/2026,UPI/CREDIT,511122224444,,15000.00,130000.00\n"
+    )
+    data = _post(client, ("bank.csv", bank, "text/csv"), ("c.txt", b"Meena: sent you 15,000 on UPI", "text/plain"))
+    fs = data["financial_summary"]
+    assert data["status"] == "AMBIGUOUS"
+    assert fs["matched_amount"] == 0.0 and fs["outstanding_amount"] == 15000.0
