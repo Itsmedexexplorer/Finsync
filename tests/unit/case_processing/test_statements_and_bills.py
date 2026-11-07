@@ -212,3 +212,37 @@ def test_word_invoice_is_never_a_reference():
     from backend.extraction.text_extractor import TextClaimExtractor
 
     assert TextClaimExtractor()._extract_reference_id("TAX INVOICE\nThanks for your business") is None
+
+
+# --- Regressions found while preparing the project report ------------------------------
+
+BANK_FOUR_ROWS = (
+    "Date,Narration,Ref No,Withdrawal,Deposit,Balance\n"
+    "15/08/2026,UPI/408219381920/RAMESH TRADERS,408219381920,,35000.00,185000.00\n"
+    "16/08/2026,NEFT/NEFTN26235889012/POOJA PLASTICS,NEFTN26235889012,,60000.00,245000.00\n"
+    "18/08/2026,ATM WDL KORAMANGALA,ATM0091823,10000.00,,235000.00\n"
+    "20/08/2026,UPI/408219399911/KAVYA STORES,408219399911,,18000.00,253000.00\n"
+).encode()
+
+
+def test_part_payment_with_same_utr_beats_an_unrelated_withdrawal(client):
+    invoice = (
+        "Sahaj Web Agency\nTAX INVOICE\nInvoice No: INV-0912\nBilled To: Pooja Plastics Pvt Ltd\n"
+        "Total Amount: Rs. 1,25,000.00\nUTR No: NEFTN26235889012\n"
+    )
+    data = _post(client, ("bank.csv", BANK_FOUR_ROWS, "text/csv"), ("invoice.txt", invoice.encode(), "text/plain"))
+    fs = data["financial_summary"]
+    assert data["status"] in ("PARTIAL", "PARTIALLY_SETTLED")
+    assert fs["matched_amount"] == 60000.0 and fs["outstanding_amount"] == 65000.0
+
+
+def test_same_message_uploaded_twice_is_still_matched(client):
+    chat = b"Ramesh Traders: Payment of Rs 35,000 done via GPay, ref 408219381920"
+    data = _post(
+        client,
+        ("bank.csv", BANK_FOUR_ROWS, "text/csv"),
+        ("chat.txt", chat, "text/plain"),
+        ("chat_copy.txt", chat, "text/plain"),
+    )
+    assert data["status"] == "CONFIRMED"
+    assert data["financial_summary"]["matched_amount"] == 35000.0

@@ -79,6 +79,11 @@ class TransactionMatcher:
 
             # Check if this pair has conflicting signals (e.g. conflicting entity)
             if cs:
+                # A conflicting bank line is only worth reporting when nothing better points at
+                # this claim. If a cleaner, higher-scoring line exists (for example the row with
+                # the same UTR but a smaller amount), leave it for partial-payment matching.
+                if any(s > score and not ccs for s, _, _, ccs, _ in claim_candidates.get(c.id, [])):
+                    continue
                 rel_id = f"MAT-CNF-{uuid.uuid4().hex[:8]}"
                 relationships.append(MatchRelationship(
                     id=rel_id,

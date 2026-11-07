@@ -290,6 +290,13 @@ class FinanceControllerPipeline:
         if recon_batch.results:
             # The check is about what someone claimed; a leftover bank line shouldn't headline it.
             with_claims = [r for r in recon_batch.results if r.claim_ids]
+            # The same file uploaded twice forms its own group with no bank line; when another
+            # group covers the same claims and does have the bank line, that one tells the story.
+            with_bank = [r for r in with_claims if r.transaction_ids]
+            with_claims = [
+                r for r in with_claims
+                if r.transaction_ids or not any(set(r.claim_ids) <= set(o.claim_ids) for o in with_bank)
+            ] or with_claims
             ctx.primary_reconciliation = (with_claims or recon_batch.results)[0]
 
         s7_duration = (time.perf_counter() - s7_start) * 1000.0
