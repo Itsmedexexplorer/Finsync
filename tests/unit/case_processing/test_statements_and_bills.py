@@ -258,3 +258,12 @@ def test_unclear_check_counts_nothing_as_received_yet(client):
     fs = data["financial_summary"]
     assert data["status"] == "AMBIGUOUS"
     assert fs["matched_amount"] == 0.0 and fs["outstanding_amount"] == 15000.0
+
+
+def test_chat_sender_names_the_check():
+    from backend.extraction.text_extractor import TextClaimExtractor
+
+    t = TextClaimExtractor()
+    assert t._extract_counterparty("Ramesh Traders: Payment of Rs 35,000 done", {}) == "Ramesh Traders"
+    assert t._extract_counterparty("[15/08/26, 9:12 PM] Meena: sent 15,000", {}) == "Meena"
+    assert t._extract_counterparty("Total: 5,000\nThanks", {}) is None

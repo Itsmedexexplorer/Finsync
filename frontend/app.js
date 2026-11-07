@@ -1504,7 +1504,7 @@ function renderSummaryTab(body, { id, report: r }) {
 
       <div class="stack">
         <section class="card card-pad" data-tour="ask">
-          <h2>${icon("auto_awesome", "fill")} Ask about this check</h2>
+          <h2>${icon("help", "fill")} Ask about this check</h2>
           <p class="sub">Answers come only from your records — nothing is made up.</p>
           <form class="ask-form mt-16" id="ask-form">
             <label class="sr-only" for="ask-q">Your question</label>
@@ -2323,7 +2323,7 @@ const TOURS = {
     { target: "verdict", icon: "gavel", title: "The verdict", body: "One plain sentence on what happened, plus how sure FinSync is about it." },
     { target: "amounts", icon: "currency_rupee", title: "The money", body: "What was expected, what actually reached your bank, and what's still due." },
     { target: "tabs", icon: "tab", title: "Go deeper", body: "Records shows every file and bank entry used. Your answer is where you confirm what happened. Follow-ups drafts reminders and accounting entries. History keeps a tamper-proof log." },
-    { target: "ask", icon: "auto_awesome", title: "Ask questions", body: "Ask anything in plain English — answers come only from your own records." },
+    { target: "ask", icon: "help", title: "Ask questions", body: "Pick a question or type one — answers are built from this check's own records using fixed rules." },
   ],
 };
 

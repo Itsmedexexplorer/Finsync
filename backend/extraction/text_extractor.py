@@ -391,7 +391,29 @@ class TextClaimExtractor(BaseExtractor):
                 candidate = re.sub(r"\s+(?:via|on|ref|using|with|by).*$", "", candidate, flags=re.IGNORECASE).strip()
                 return candidate
 
+        # Chat exports put the sender first: "Ramesh Traders: paid 35,000" or
+        # "[15/08/26, 9:12 PM] Ramesh: paid 35,000". Field labels such as "Total:" are skipped.
+        speaker = re.search(
+            r"^\s*(?:\[[^\]]*\]\s*|\d{1,2}[/-]\d{1,2}[/-]\d{2,4},?\s+\d{1,2}:\d{2}(?:\s*[AaPp][Mm])?\s*-\s*)?"
+            r"([A-Z][A-Za-z.&']*(?:\s+[A-Z][A-Za-z.&']*){0,3})\s*:\s+\S",
+            text,
+            re.MULTILINE,
+        )
+        if speaker:
+            name = speaker.group(1).strip()
+            first = name.split()[0].lower()
+            if first not in self._FIELD_LABELS and name.lower() not in ("you", "me", "admin"):
+                return name
+
         return None
+
+    _FIELD_LABELS = {
+        "total", "amount", "invoice", "inv", "bill", "date", "due", "utr", "ref", "reference", "txn",
+        "transaction", "upi", "mode", "client", "billed", "customer", "vendor", "gstin", "pan", "gst",
+        "subtotal", "tax", "cgst", "sgst", "igst", "balance", "paid", "payment", "account", "a/c",
+        "ifsc", "bank", "phone", "mobile", "email", "address", "status", "note", "notes", "order",
+        "receipt", "rrn", "narration", "remarks", "from", "to", "sender", "receiver", "time",
+    }
 
     def _extract_date_hint(
         self,
