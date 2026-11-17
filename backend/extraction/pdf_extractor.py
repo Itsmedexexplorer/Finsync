@@ -137,7 +137,7 @@ class PDFDocumentExtractor(BaseExtractor):
                 pass
 
         # 2. General currency pattern in invoice
-        m_curr = re.search(r"(?:Rs\.?|₹|INR)\s*([\d,]+(?:\.\d{1,2})?)", text, re.IGNORECASE)
+        m_curr = re.search(r"(?:(?<![A-Za-z])(?:Rs\.?|INR)|₹)\s*([\d,]+(?:\.\d{1,2})?)", text, re.IGNORECASE)
         if m_curr:
             try:
                 return round(float(m_curr.group(1).replace(",", "")), 2)

@@ -304,3 +304,95 @@ def test_claim_with_a_known_utr_is_never_paired_with_another_line(client):
     )
     assert data["status"] == "CONTRADICTED"
     assert "UTIB2026110600871" not in data["truth_report"]["summary"]
+
+
+def test_amount_at_the_start_or_end_of_the_text_is_read_in_full():
+    from backend.extraction.text_extractor import TextClaimExtractor
+
+    t = TextClaimExtractor()
+    assert t._extract_amount("69,400.00\nPaid to\nSahaj Web Agency")[0] == 69400.0
+    assert t._extract_amount("69,400.00")[0] == 69400.0
+    assert t._extract_amount("Paid to Sahaj\n1,25,000")[0] == 125000.0
+    assert t._extract_amount("Invoice #1058 total pending")[0] is None
+
+
+def test_leading_digit_is_kept_when_the_rupee_sign_was_lost():
+    from backend.extraction.ocr_extractor import _fix_rupee_word
+
+    assert _fix_rupee_word("402,500.00", None) == "402,500.00"  # ₹4,02,500 with the sign dropped
+    assert _fix_rupee_word("235,000", None) == "₹35,000"  # sign read as a 2
+
+
+def test_reference_split_by_ocr_is_joined():
+    from backend.extraction.document_fields import find_payment_reference
+
+    assert find_payment_reference("UTR No: KKBKR576138 4146572") == "KKBKR5761384146572"
+    assert find_payment_reference("RRN: 542989314770 Date 05") == "542989314770"
+    assert find_payment_reference("Txn ID: 123456 789") == "123456"
+
+
+def test_smaller_amount_with_a_different_reference_is_not_a_part_payment(client):
+    bank = (
+        b"Date,Narration,Ref No,Withdrawal,Deposit,Balance\n"
+        b"10/06/2026,UPI/307664582240/GUPTA TEXTILES,307664582240,,34700.00,968023.00\n"
+        b"12/06/2026,UPI/482376069528/KHAN LOGISTICS,482376069528,,311800.00,1279823.00\n"
+    )
+    msg = b"Gupta Enterprises: paid Rs 3,77,500 via UPI, ref 414535470262"
+    data = _post(client, ("bank.csv", bank, "text/csv"), ("m.txt", msg, "text/plain"))
+    assert data["status"] == "UNVERIFIABLE"
+    assert data["financial_summary"]["matched_amount"] == 0.0
+
+
+def test_hash_read_for_rupee_after_amount_label():
+    from backend.extraction.ocr_extractor import clean_ocr_text
+
+    assert clean_ocr_text("Amount: #1 30,447") == "Amount: ₹1,30,447"
+    assert clean_ocr_text("Invoice #1058 due") == "Invoice #1058 due"
+
+
+def test_reference_split_early_by_ocr_is_joined():
+    from backend.extraction.document_fields import find_payment_reference
+
+    assert find_payment_reference("UTR No: HDFCR5256 10068874675") == "HDFCR525610068874675"
+
+
+def test_long_reference_split_late_is_joined_but_amounts_are_not():
+    from backend.extraction.document_fields import find_payment_reference
+
+    assert find_payment_reference("UTR No: SBINR55400656231 9926") == "SBINR554006562319926"
+    assert find_payment_reference("UTR: UTIB2026102200482 35,000.00") == "UTIB2026102200482"
+    assert find_payment_reference("UTR: UTIB2026102200482 2500.00") == "UTIB2026102200482"
+
+
+def test_inr_inside_a_utr_is_not_a_currency_sign():
+    from backend.extraction.text_extractor import TextClaimExtractor
+
+    t = TextClaimExtractor()
+    msg = "Neha Traders: Ref no. SBINR5771559067258 - 108169/- transferred by NEFT"
+    assert t._extract_amount(msg)[0] == 108169.0
+    assert t._extract_amount("paid Rs.35,000")[0] == 35000.0
+
+
+def test_hash_glued_to_a_grouped_amount_is_rupee():
+    from backend.extraction.ocr_extractor import clean_ocr_text
+
+    assert clean_ocr_text("#1,66,685.00") == "₹1,66,685.00"
+    assert clean_ocr_text("Order #1058") == "Order #1058"
+
+
+def test_one_character_ocr_slip_in_a_utr_is_corrected_only_for_ocr_claims():
+    from backend.case_processing.ocr_reference import snap_ocr_references
+    from backend.domain.claim import Claim
+    from backend.domain.transaction import Transaction
+
+    t = Transaction.model_validate({"id": "T1", "amount": 35750.0, "direction": "DEBIT", "bank_reference": "PUNBR57915645049", "evidence_ids": ["E1"]}) \
+        if hasattr(Transaction, "model_validate") else None
+    if t is None:
+        return
+    base = dict(id="C1", evidence_id="E2", claim_type="INVOICE_ISSUED", raw_text_snippet="x", claimed_amount=35750.0,
+                reference_id_hint="PUNBR5S7915645049")
+    ocr = Claim(**base, metadata={"read_by_ocr": True})
+    typed = Claim(**{**base, "id": "C2"}, metadata={})
+    out = snap_ocr_references([ocr, typed], [t])
+    assert out[0].reference_id_hint == "PUNBR57915645049"
+    assert out[1].reference_id_hint == "PUNBR5S7915645049"

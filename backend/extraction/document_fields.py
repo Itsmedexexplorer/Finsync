@@ -51,10 +51,38 @@ def find_payment_reference(text: str) -> Optional[str]:
     Words such as 'INVOICE' are never returned: a reference needs at least six digits.
     """
     for m in _UTR_LABEL.finditer(text):
-        val = m.group("val").strip("-")
+        val = _join_split_reference(m.group("val").strip("-"), text[m.end():])
         if _digits(val) >= _MIN_REF_DIGITS:
             return val
     return None
+
+
+# A plain run of digits that ends the line or is followed by a space; never an amount
+# such as "35,000" or "2500.00".
+_NEXT_DIGIT_CHUNK = re.compile(r"^[ \t]+(\d{2,})(?=[ \t]*$|[ \t]+[^\d\s])", re.MULTILINE)
+
+
+def _join_split_reference(val: str, rest: str) -> str:
+    """OCR sometimes breaks a long reference with a space ("KKBKR576138 4146572"). Digit chunks
+    that follow on the same line are joined back while the result still has a valid length:
+    a NEFT/RTGS/IMPS UTR (letters first) is 16-22 characters, a UPI RRN is exactly 12 digits."""
+    joined = val
+    while True:
+        m = _NEXT_DIGIT_CHUNK.match(rest)
+        if not m:
+            break
+        candidate = joined + m.group(1)
+        if joined[:1].isalpha() and len(candidate) <= 22:
+            joined, rest = candidate, rest[m.end():]
+        elif joined.isdigit() and len(joined) < 12 and len(candidate) <= 12:
+            joined, rest = candidate, rest[m.end():]
+        else:
+            break
+    if joined[:1].isalpha() and len(joined) < 16:
+        return val
+    if joined.isdigit() and len(joined) != 12 and joined != val:
+        return val
+    return joined
 
 
 def find_invoice_number(text: str) -> Optional[str]:

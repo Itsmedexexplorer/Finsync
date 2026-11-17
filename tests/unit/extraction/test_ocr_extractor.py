@@ -163,3 +163,25 @@ def test_blank_image_falls_back_without_error():
     ingest = ImagePaymentScreenshotAdapter().ingest_payload(_png(blank), source_name="blank.png")
     result = ExtractionService().extract_from_evidence(ingest.evidence_items[0])
     assert not result.provider_name.startswith("tesseract_ocr")
+
+
+def test_space_after_grouping_comma_is_joined():
+    from backend.extraction.ocr_extractor import clean_ocr_text
+
+    assert clean_ocr_text("2,48, 200.00") == "2,48,200.00"
+    assert clean_ocr_text("₹1, 25, 000") == "₹1,25,000"
+    assert clean_ocr_text("Items 2, 3 and 4") == "Items 2, 3 and 4"
+
+
+def test_space_before_grouping_comma_is_joined():
+    from backend.extraction.ocr_extractor import clean_ocr_text
+
+    assert clean_ocr_text("INR 2,31 ,999.00") == "INR 2,31,999.00"
+    assert clean_ocr_text("1 ,25 ,000") == "1,25,000"
+
+
+def test_comma_read_as_space_inside_indian_amount():
+    from backend.extraction.ocr_extractor import clean_ocr_text
+
+    assert clean_ocr_text("₹3,99 733.00") == "₹3,99,733.00"
+    assert clean_ocr_text("Room 12 345 people") == "Room 12 345 people"

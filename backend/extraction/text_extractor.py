@@ -252,7 +252,7 @@ class TextClaimExtractor(BaseExtractor):
                     candidates.append((idx2, float(val)))
 
         # 3. Check explicit currency markers: ₹ 35,000.00 / Rs. 18,500 / INR 25000
-        for m_curr in re.finditer(r"(?:₹|Rs\.?|INR)\s*(?P<amt>\d+(?:,\d+)*(?:\.\d{1,2})?)", normalized_text, re.IGNORECASE):
+        for m_curr in re.finditer(r"(?:₹|(?<![A-Za-z])(?:Rs\.?|INR))\s*(?P<amt>\d+(?:,\d+)*(?:\.\d{1,2})?)", normalized_text, re.IGNORECASE):
             cleaned = m_curr.group("amt").replace(",", "")
             try:
                 candidates.append((m_curr.start(), round(float(cleaned), 2)))
@@ -327,8 +327,9 @@ class TextClaimExtractor(BaseExtractor):
     @staticmethod
     def _is_part_of_identifier(text: str, start: int, end: int) -> bool:
         """True for digits glued to letters or ID marks, e.g. INV-1058, #1058, A77B, 1058/26."""
-        before = text[start - 1] if start > 0 else ""
-        after = text[end] if end < len(text) else ""
+        # A space stands in for "nothing there": an empty string would count as being "in" any string.
+        before = text[start - 1] if start > 0 else " "
+        after = text[end] if end < len(text) else " "
         if before.isalpha() or before in "#_/":
             return True
         if before == "-" and start > 1 and text[start - 2].isalnum():

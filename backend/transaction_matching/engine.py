@@ -236,6 +236,11 @@ class TransactionMatcher:
             for t in remaining_txns:
                 if t.id in matched_txn_ids or points_elsewhere(c, t):
                     continue
+                # A part payment of a transfer carries that transfer's reference. When the claim and
+                # the bank line both show a reference and they differ, they are different payments.
+                cr, tr = _ref(c.reference_id_hint), _ref(t.bank_reference)
+                if cr and tr and cr != tr:
+                    continue
                 score, ms, cs, exp = PairwiseSignalEvaluator.evaluate_pair(c, t, c_ent, self.config)
                 # A smaller amount alone isn't evidence; the bank line must also point to this claim,
                 # unless the user put exactly one claim and one bank line with no narration together

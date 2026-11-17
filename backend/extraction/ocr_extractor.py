@@ -93,9 +93,22 @@ def prepare_image(img: Image.Image) -> Image.Image:
 def clean_ocr_text(text: str) -> str:
     """Tidies OCR output: rupee-sign lookalikes, stray spacing and empty lines."""
     text = _RUPEE_LOOKALIKE.sub("₹", text)
+    # Right after a money label, "#" before digits is the rupee sign ("Amount: #1 30,447"). Elsewhere
+    # "#" stays, because "Invoice #1058" is a number, not money.
+    text = re.sub(r"(?i)(\b(?:amount|total|paid|received|sent)\b[ \t]*[:\-]?[ \t]*)#[ \t]*(?=\d)", r"\1₹", text)
+    # "#" glued to a comma-grouped amount with paise is money too ("#1,66,685.00"); IDs such as
+    # "#1058" have no grouping commas, so they are left alone.
+    text = re.sub(r"(?<![\w#])#(?=\d{1,3}(?:,\d{2,3})+\.\d{2}\b)", "₹", text)
     text = re.sub(r"₹\s+(?=\d)", "₹", text)
     # A comma read as a space right after the rupee sign: "₹1 25,000" → "₹1,25,000".
     text = re.sub(r"(₹\d{1,3})\s(?=\d{2,3}(?:,\d{2,3})*(?:\.\d{1,2})?\b)", r"\1,", text)
+    # A space read next to a grouping comma: "2,48, 200.00" or "2,31 ,999.00" → one number. Only
+    # joins when the next piece is a valid digit group: 3 digits that end the number, or 2 digits
+    # and another comma.
+    for _ in range(3):
+        text = re.sub(r"(?<=\d)(?:[ \t]+,[ \t]*|,[ \t]+)(?=\d{3}(?:\.\d{1,2})?(?![\d,])|\d{2}[ \t]*,[ \t]*\d)", ",", text)
+    # A grouping comma read as a space inside an Indian-grouped amount: "₹3,99 733.00" → "₹3,99,733.00".
+    text = re.sub(r"(?<=\d,\d{2})[ \t]+(?=\d{3}(?:\.\d{1,2})?(?![\d,]))", ",", text)
     lines = [re.sub(r"[ \t]{2,}", " ", ln).strip() for ln in text.splitlines()]
     return "\n".join(ln for ln in lines if ln)
 
@@ -166,7 +179,9 @@ def _fix_rupee_word(word: str, glyph: Optional[Image.Image]) -> str:
     lead, num = m.group("lead"), m.group("num")
     if lead in _SYMBOL_LEADS:
         return "₹" + num
-    if lead.isdigit():
+    # A real amount never starts with 0, so a leading digit before "02,500" is part of the number
+    # (₹4,02,500 read as "402,500" with the sign lost), not a misread rupee sign.
+    if lead.isdigit() and not num.startswith("0"):
         if glyph is not None and looks_like_rupee(glyph):
             return "₹" + num
         if _WESTERN_ONLY.match(word) and _INDIAN_AMOUNT.match(num):
@@ -202,7 +217,7 @@ def _first_char_glyphs(
     return crops
 
 
-_HAS_AMOUNT = re.compile(r"(?:₹|Rs\.?|INR)\s?\d|\b\d{1,3}(?:,\d{2,3})+\b")
+_HAS_AMOUNT = re.compile(r"(?:₹|(?<![A-Za-z])(?:Rs\.?|INR))\s?\d|\b\d{1,3}(?:,\d{2,3})+\b")
 
 
 def _ocr_pass(prepared: Image.Image, config: str, timeout: int) -> str:
@@ -239,8 +254,13 @@ def _ocr_pass(prepared: Image.Image, config: str, timeout: int) -> str:
     to_check = [w for w in words if money_shaped(w)]
     glyphs = _first_char_glyphs(prepared, to_check, timeout, config) if to_check else []
     glyph_of = {id(w): g for w, g in zip(to_check, glyphs)}
+    prev_on_line: Dict[Any, str] = {}
     for w in words:
-        w["text"] = _fix_rupee_word(w["text"], glyph_of.get(id(w)))
+        # After "Rs." / "INR" / "₹" the currency is already written, so a leading digit is a real digit.
+        has_currency = re.fullmatch(r"(?i)(?:rs\.?|inr|₹)", prev_on_line.get(w["line"], "")) is not None
+        if not has_currency:
+            w["text"] = _fix_rupee_word(w["text"], glyph_of.get(id(w)))
+        prev_on_line[w["line"]] = w["text"]
 
     lines: Dict[Any, List[str]] = {}
     for w in words:

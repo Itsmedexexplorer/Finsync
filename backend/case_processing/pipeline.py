@@ -17,6 +17,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from backend.case_processing.bill_direction import infer_paid_bills
+from backend.case_processing.ocr_reference import snap_ocr_references
 from backend.case_processing.context import CaseProcessingContext
 from backend.case_processing.models import CaseInput, PipelineStage, StageExecutionRecord
 from backend.case_processing.result import CaseProcessingResult
@@ -136,6 +137,8 @@ class FinanceControllerPipeline:
                         remaining_claims.append(c)
                 extracted_claims = remaining_claims
 
+            # A long reference read from a photo with one wrong character is matched to its bank line.
+            extracted_claims = snap_ocr_references(extracted_claims, extracted_txns)
             # Invoices the bank shows as paid OUT are bills the user paid, not money owed to them.
             extracted_claims = infer_paid_bills(extracted_claims, extracted_txns)
 
