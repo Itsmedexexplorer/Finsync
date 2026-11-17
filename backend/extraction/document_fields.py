@@ -34,7 +34,9 @@ _PARTY_LINE = re.compile(
 )
 _BUSINESS_WORDS = re.compile(
     r"\b(?:pvt|private|ltd|limited|llp|inc|corp|corporation|technologies|technology|enterprises|traders|trading"
-    r"|solutions|industries|services|associates|agency|consultants|company|co\.)\b",
+    r"|solutions|industries|services|associates|agency|agencies|consultants|company|co\.|supplies|suppliers"
+    r"|stores|store|mart|foods|hardware|motors|textiles|electricals|electronics|pharma|medicals|logistics"
+    r"|works|studio|enterprise|distributors|exports|imports)\b",
     re.IGNORECASE,
 )
 _NOT_A_NAME = re.compile(r"\b(?:tax\s*invoice|invoice|receipt|statement|bill\s*of\s*supply|quotation)\b", re.IGNORECASE)
@@ -118,11 +120,13 @@ def find_parties(text: str) -> Dict[str, str]:
         key = "client" if re.fullmatch(_CLIENT_LABELS, label, re.IGNORECASE) else "vendor"
         parties.setdefault(key, name)
 
-    for line in text.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        if _BUSINESS_WORDS.search(line) and not _NOT_A_NAME.search(line) and ":" not in line and len(line) <= 80:
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    is_bill = any(_NOT_A_NAME.search(ln) for ln in lines[:4])
+    for line in lines[:1]:  # only the first non-empty line can be a letterhead
+        if _NOT_A_NAME.search(line) or ":" in line or len(line) > 80:
+            break
+        # A short, letters-only first line on an invoice or receipt is the business that issued it.
+        plain_name = is_bill and re.fullmatch(r"[A-Za-z][A-Za-z.&' ]{1,60}", line) and 1 <= len(line.split()) <= 6
+        if (_BUSINESS_WORDS.search(line) or plain_name) and line.lower() != parties.get("client", "").lower():
             parties["issuer"] = line
-        break  # only the first non-empty line can be a letterhead
     return parties

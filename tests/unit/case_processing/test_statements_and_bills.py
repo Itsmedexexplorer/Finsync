@@ -407,3 +407,11 @@ def test_ocr_reference_missing_one_digit_is_corrected():
     c = Claim(id="C1", evidence_id="E2", claim_type="PAYMENT_SENT", raw_text_snippet="x", claimed_amount=181240.0,
               reference_id_hint="58729320681", metadata={"read_by_ocr": True})
     assert snap_ocr_references([c], [t])[0].reference_id_hint == "587293206811"
+
+
+def test_plain_letterhead_on_a_bill_is_the_vendor():
+    from backend.extraction.document_fields import find_parties
+
+    text = "Shree Office Supplies\nTAX INVOICE\nInvoice No: SOS-2231\nClient: Sahaj Web Agency\n"
+    assert find_parties(text)["issuer"] == "Shree Office Supplies"
+    assert "issuer" not in find_parties("Hello sir\nplease check payment")
