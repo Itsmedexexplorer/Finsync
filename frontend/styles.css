@@ -776,3 +776,9 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .google-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
 .auth-or { display: flex; align-items: center; gap: 12px; margin: 14px 0 2px; color: var(--muted); font-size: 13px; }
 .auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+/* One upload, many payments */
+.nb-list .nb-line { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; }
+.nb-list .nb-line > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nb-list .nb-line b { font-weight: 600; overflow-wrap: anywhere; }
+.nb-list .nb-line .money { white-space: nowrap; font-weight: 600; }

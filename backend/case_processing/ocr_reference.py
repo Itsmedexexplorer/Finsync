@@ -4,7 +4,7 @@ Reading a photo can add, drop or swap a single character in a long UTR
 ("PUNBR57915645049" read as "PUNBR5S7915645049"). A reference that came from OCR and is
 not in the bank statement is replaced by a statement reference only when:
 
-* it is at least 12 characters long (UPI RRNs are 12 digits, NEFT/RTGS UTRs 16-22),
+* it is at least 11 characters long (a 12-digit UPI RRN with one digit lost still counts),
 * exactly one statement reference is within one character edit of it, and
 * that statement reference is also at least 12 characters long.
 
@@ -20,7 +20,8 @@ from typing import List, Optional, Sequence
 from backend.domain.claim import Claim
 from backend.domain.transaction import Transaction
 
-_MIN_LEN = 12
+_MIN_LEN = 12        # bank references: UPI RRNs are 12 digits, NEFT/RTGS UTRs 16-22
+_MIN_OCR_LEN = 11    # what was read from the photo, which may have lost one character
 
 
 def _norm(value: Optional[str]) -> str:
@@ -48,7 +49,7 @@ def snap_ocr_references(claims: Sequence[Claim], transactions: Sequence[Transact
     for claim in claims:
         meta = claim.metadata or {}
         ref = _norm(claim.reference_id_hint)
-        if not meta.get("read_by_ocr") or len(ref) < _MIN_LEN or ref in bank_refs:
+        if not meta.get("read_by_ocr") or len(ref) < _MIN_OCR_LEN or ref in bank_refs:
             out.append(claim)
             continue
         near = [raw for n, raw in bank_refs.items() if _within_one_edit(ref, n)]

@@ -37,7 +37,17 @@ def _check_summary(result, created_at: str | None, review) -> Dict[str, Any]:
         "issues_count": len(report.contradiction_summary) if report else fs.get("discrepancies_count", 0),
         "files_count": fs.get("evidence_count", 0),
         "created_at": created_at or (report.created_at.isoformat() if report else None),
+        "batch_id": (result.metadata or {}).get("batch_id"),
+        "flow": _flow(report),
     }
+
+
+def _flow(report) -> str:
+    """'out' when every claim is a bill the user paid, otherwise 'in'."""
+    claims = getattr(report, "claims_summary", None) or []
+    types = {str(getattr(c, "claim_type", "") or (c.get("claim_type") if isinstance(c, dict) else "")) for c in claims}
+    types = {t.split(".")[-1] for t in types if t}
+    return "out" if types and types <= {"EXPENSE_INCURRED"} else "in"
 
 
 def _all_checks() -> List[Dict[str, Any]]:
@@ -59,6 +69,47 @@ def _all_checks() -> List[Dict[str, Any]]:
 def list_checks() -> List[Dict[str, Any]]:
     """All of the signed-in user's checks, newest first."""
     return _all_checks()
+
+
+def batch_summary(batch_id: str) -> Dict[str, Any]:
+    """Everything one upload contained: a row per payment, totals, and bank lines with no proof."""
+    store = get_case_store()
+    checks = [c for c in _all_checks() if c.get("batch_id") == batch_id]
+    if not checks:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Upload not found.")
+    first = store.get_case(checks[0]["case_id"])
+    meta = (first.metadata or {}) if first else {}
+    checks.sort(key=lambda c: c["case_id"])
+
+    def total(flow: str, key: str) -> float:
+        return round(sum((c.get(key) or 0.0) for c in checks if c["flow"] == flow), 2)
+
+    counts: Dict[str, int] = {}
+    for c in checks:
+        counts[c["status"]] = counts.get(c["status"], 0) + 1
+    return {
+        "batch_id": batch_id,
+        "case_id": None,
+        "created_at": min((c["created_at"] or "") for c in checks) or None,
+        "payments": len(checks),
+        "statement_files": meta.get("batch_statement_files", []),
+        "statement_rows": meta.get("batch_statement_rows", 0),
+        "money_in": {"expected": total("in", "expected_amount"), "received": total("in", "matched_amount"),
+                     "due": total("in", "outstanding_amount")},
+        "money_out": {"billed": total("out", "expected_amount"), "paid": total("out", "matched_amount"),
+                      "unpaid": total("out", "outstanding_amount")},
+        "status_counts": counts,
+        "needs_review": sum(1 for c in checks if c["status"] != "CONFIRMED"),
+        "checks": checks,
+        "unexplained": meta.get("batch_unexplained", []),
+        "unread_files": meta.get("batch_unread_files", []),
+    }
+
+
+@router.get("/api/v1/batches/{batch_id}")
+def get_batch(batch_id: str) -> Dict[str, Any]:
+    """One upload that was split into many payments."""
+    return batch_summary(batch_id)
 
 
 @router.get("/api/v1/counterparties")

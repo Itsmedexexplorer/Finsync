@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import tempfile
 import time
@@ -356,6 +357,95 @@ async def submit_files_evidence(
         return serialize_case_result(result, service.pipeline.provenance_tracker)
     finally:
         # Cleanup temporary files
+        try:
+            shutil.rmtree(temp_dir)
+        except Exception:
+            pass
+
+
+@router.post("/api/v1/batches/files", tags=["Cases"])
+async def submit_batch_files(
+    files: List[UploadFile] = File(...),
+    service: CaseProcessingService = Depends(get_case_service),
+    store: InMemoryCaseStore = Depends(get_case_store),
+) -> Dict[str, Any]:
+    """One upload with a bank statement and many proofs: every payment becomes its own check.
+
+    When the files hold only one payment, this behaves exactly like /api/v1/cases/files and
+    returns {"case_id": ...}. Otherwise it returns {"batch_id": ...} with a summary per payment.
+    """
+    from backend.api.user_routes import batch_summary
+    from backend.case_processing.batch import case_input_for, new_batch_id, plan_batch, unexplained_bank_lines
+
+    settings = get_settings()
+    max_files = max(settings.max_files_per_case, settings.max_files_per_batch)
+    if len(files) > max_files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Exceeded maximum allowed files per upload ({max_files}). Received {len(files)} files.",
+        )
+
+    temp_dir = tempfile.mkdtemp(prefix="verity_batch_")
+    saved_paths: List[str] = []
+    try:
+        used_names: Dict[str, int] = {}
+        for file in files:
+            orig_name = file.filename or f"evidence_{uuid.uuid4().hex[:6]}"
+            sanitized_name = SecurityValidator.sanitize_filename(orig_name)
+            SecurityValidator.validate_file_extension(sanitized_name)
+            SecurityValidator.validate_content_type(file.content_type, sanitized_name)
+            content = await file.read()
+            SecurityValidator.validate_file_size(len(content), settings.max_upload_bytes, sanitized_name)
+            # Two files with the same name are both kept.
+            n = used_names.get(sanitized_name, 0)
+            used_names[sanitized_name] = n + 1
+            stored_name = sanitized_name if n == 0 else f"{Path(sanitized_name).stem}_{n}{Path(sanitized_name).suffix}"
+            file_dest = Path(temp_dir) / stored_name
+            with open(file_dest, "wb") as buffer:
+                buffer.write(content)
+            saved_paths.append(str(file_dest))
+
+        plan = plan_batch(service.pipeline, saved_paths)
+
+        if len(plan.groups) <= 1:
+            # A single payment: the normal check, unchanged.
+            cid = f"UPLOAD-CASE-{uuid.uuid4().hex[:8]}"
+            result = service.process_case(CaseInput(case_id=cid, raw_file_paths=saved_paths))
+            store.save_case(result)
+            return {"case_id": result.case_id, "batch_id": None}
+
+        batch_id = new_batch_id()
+        used_txn_ids: set = set()
+        maybe_for: Dict[str, str] = {}
+        results = []
+        for i, group in enumerate(plan.groups, start=1):
+            cid = f"{batch_id}-{i:02d}"
+            result = service.process_case(case_input_for(plan, group, cid, {}))
+            rec = result.reconciliation
+            if rec and result.status != "AMBIGUOUS":
+                used_txn_ids.update(rec.transaction_ids or [])
+            elif result.status == "AMBIGUOUS":
+                who = (result.report.entity_summary.canonical_name if result.report else None) or "an unclear check"
+                # An unclear check lists the bank lines it could not choose between.
+                for tid in (rec.transaction_ids or []) if rec else []:
+                    maybe_for.setdefault(tid, who)
+            results.append(result)
+
+        batch_meta = {
+            "batch_id": batch_id,
+            "batch_size": len(results),
+            # Each statement row is its own evidence ("statement.pdf:Row2"); show the file once.
+            "batch_statement_files": sorted({re.sub(r":Row\d+$", "", ev.source_name) for ev in plan.bank_evidence if ev.source_name}),
+            "batch_statement_rows": len(plan.transactions),
+            "batch_unexplained": unexplained_bank_lines(plan, used_txn_ids, maybe_for),
+            "batch_unread_files": plan.unread_files,
+        }
+        for result in results:
+            result.metadata = {k: v for k, v in (result.metadata or {}).items() if k != "precomputed_claims"}
+            result.metadata.update(batch_meta)
+            store.save_case(result)
+        return batch_summary(batch_id)
+    finally:
         try:
             shutil.rmtree(temp_dir)
         except Exception:

@@ -396,3 +396,14 @@ def test_one_character_ocr_slip_in_a_utr_is_corrected_only_for_ocr_claims():
     out = snap_ocr_references([ocr, typed], [t])
     assert out[0].reference_id_hint == "PUNBR57915645049"
     assert out[1].reference_id_hint == "PUNBR5S7915645049"
+
+
+def test_ocr_reference_missing_one_digit_is_corrected():
+    from backend.case_processing.ocr_reference import snap_ocr_references
+    from backend.domain.claim import Claim
+    from backend.domain.transaction import Transaction
+
+    t = Transaction.model_validate({"id": "T1", "amount": 82100.0, "direction": "CREDIT", "bank_reference": "587293206811", "evidence_ids": ["E1"]})
+    c = Claim(id="C1", evidence_id="E2", claim_type="PAYMENT_SENT", raw_text_snippet="x", claimed_amount=181240.0,
+              reference_id_hint="58729320681", metadata={"read_by_ocr": True})
+    assert snap_ocr_references([c], [t])[0].reference_id_hint == "587293206811"

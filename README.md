@@ -20,6 +20,7 @@ FinSync works on fixed rules: the same files always give the same result, and ev
 ## Features
 
 - Upload a bank statement with invoices, chat exports or screenshots, or paste a message
+- **Many payments in one upload**: add the bank statement and all screenshots, invoices and chats at once. FinSync sorts them by payment and person, checks each one separately, and shows a summary: who paid what, how much is still due, bills you paid, and bank entries that no proof explains
 - **Reads images with OCR**: payment screenshots (GPay, PhonePe, Paytm), photos of receipts and scanned PDFs
 - **Bank statements as CSV or PDF**: column names are recognised even with extras like "Debit (INR)" or "UTR / Ref No."; PDF statements (text or scanned) are read row by row
 - **Bills you paid, not just money owed to you**: a supplier's bill whose UTR (or name and exact amount) shows up as money going out is checked as a bill paid
@@ -61,7 +62,7 @@ Up to 20 files per check, 15 MB each.
 
 1. Sign up and sign in.
 2. Click **New check** and upload your bank statement (CSV or PDF) plus any invoices, bills, chats or screenshots.
-3. Read the result: status, amounts and anything that didn't add up.
+3. Read the result: status, amounts and anything that didn't add up. If the upload held several payments, you get a summary page with one row per person; open any row for its full check.
 4. If FinSync asks a question, pick the answer that fits.
 5. Send a follow-up if money is still due, and track totals on the **People** page.
 

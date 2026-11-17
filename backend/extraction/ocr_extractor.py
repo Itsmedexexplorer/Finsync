@@ -100,6 +100,8 @@ def clean_ocr_text(text: str) -> str:
     # "#1058" have no grouping commas, so they are left alone.
     text = re.sub(r"(?<![\w#])#(?=\d{1,3}(?:,\d{2,3})+\.\d{2}\b)", "₹", text)
     text = re.sub(r"₹\s+(?=\d)", "₹", text)
+    # A stray space inside the first digit group: "₹1 7,050.00" → "₹17,050.00".
+    text = re.sub(r"(₹\d)[ \t](?=\d(?:,\d{2})*,\d{3}(?:\.\d{1,2})?(?![\d,]))", r"\1", text)
     # A comma read as a space right after the rupee sign: "₹1 25,000" → "₹1,25,000".
     text = re.sub(r"(₹\d{1,3})\s(?=\d{2,3}(?:,\d{2,3})*(?:\.\d{1,2})?\b)", r"\1,", text)
     # A space read next to a grouping comma: "2,48, 200.00" or "2,31 ,999.00" → one number. Only
@@ -172,6 +174,24 @@ def looks_like_rupee(glyph: Image.Image) -> bool:
     return single and drift > 0.15
 
 
+_GROUPED = re.compile(r"^\d{1,3}(?:,\d{2,3})+(?:\.\d{1,2})?$")
+_SLASHED_AMOUNT = re.compile(r"^(?P<lead>[^\d]?)(?P<num>[\d,/]*,[\d,/]*/[\d,/]*(?:\.\d{1,2})?)$")
+
+
+def fix_slash_in_amount(word: str) -> str:
+    """Tesseract often reads the digit 7 as "/" inside an amount: "₹26,758" → "26,/58" or
+    "26,7/58". Only comma-grouped amounts are touched (dates such as 07/07/2026 have no comma):
+    the "/" is read as a 7, or dropped as a stray mark, whichever gives a valid amount."""
+    m = _SLASHED_AMOUNT.match(word)
+    if not m:
+        return word
+    lead, num = m.group("lead"), m.group("num")
+    for candidate in (num.replace("/", "7"), num.replace("/", "")):
+        if _GROUPED.match(candidate):
+            return lead + candidate
+    return word
+
+
 def _fix_rupee_word(word: str, glyph: Optional[Image.Image]) -> str:
     m = _AMOUNT_WORD.match(word)
     if not m:
@@ -182,8 +202,11 @@ def _fix_rupee_word(word: str, glyph: Optional[Image.Image]) -> str:
     # A real amount never starts with 0, so a leading digit before "02,500" is part of the number
     # (₹4,02,500 read as "402,500" with the sign lost), not a misread rupee sign.
     if lead.isdigit() and not num.startswith("0"):
-        if glyph is not None and looks_like_rupee(glyph):
-            return "₹" + num
+        if glyph is not None:
+            # The first character's shape decides: a real digit stays a digit
+            # ("₹3,82,110" read as "382,110" with the sign lost).
+            return "₹" + num if looks_like_rupee(glyph) else word
+        # Without the glyph, Indian digit grouping decides (235,000 → ₹35,000).
         if _WESTERN_ONLY.match(word) and _INDIAN_AMOUNT.match(num):
             return "₹" + num
     return word
@@ -232,7 +255,7 @@ def _ocr_pass(prepared: Image.Image, config: str, timeout: int) -> str:
         if not text:
             continue
         words.append({
-            "text": text,
+            "text": fix_slash_in_amount(text),
             "line": (data["block_num"][i], data["par_num"][i], data["line_num"][i]),
             "left": data["left"][i], "top": data["top"][i],
             "width": data["width"][i], "height": data["height"][i],

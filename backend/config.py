@@ -70,6 +70,10 @@ class Settings(BaseModel):
         default_factory=lambda: int(os.getenv("VERITY_MAX_TEXT_LENGTH", "250000")),
         description="Maximum length for raw text/chat exports in characters"
     )
+    max_files_per_batch: int = Field(
+        default_factory=lambda: int(os.getenv("VERITY_MAX_FILES_PER_BATCH", "40")),
+        description="Maximum files in one upload that is split into many payments"
+    )
     max_files_per_case: int = Field(
         default_factory=lambda: int(os.getenv("VERITY_MAX_FILES_PER_CASE", "20")),
         description="Maximum files allowed in a single case submission"

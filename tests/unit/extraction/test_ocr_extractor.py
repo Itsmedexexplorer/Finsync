@@ -185,3 +185,19 @@ def test_comma_read_as_space_inside_indian_amount():
 
     assert clean_ocr_text("₹3,99 733.00") == "₹3,99,733.00"
     assert clean_ocr_text("Room 12 345 people") == "Room 12 345 people"
+
+
+def test_seven_read_as_slash_inside_an_amount():
+    from backend.extraction.ocr_extractor import fix_slash_in_amount
+
+    assert fix_slash_in_amount("%26,/58") == "%26,758"
+    assert fix_slash_in_amount("%26,7/58.00") == "%26,758.00"
+    assert fix_slash_in_amount("07/07/2026") == "07/07/2026"
+    assert fix_slash_in_amount("INV/2026/01") == "INV/2026/01"
+
+
+def test_stray_space_inside_first_digit_group():
+    from backend.extraction.ocr_extractor import clean_ocr_text
+
+    assert clean_ocr_text("₹1 7,050.00") == "₹17,050.00"
+    assert clean_ocr_text("₹1 25,000") == "₹1,25,000"

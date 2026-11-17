@@ -986,6 +986,7 @@ async function render() {
   try {
     if (!a) await viewHome(view);
     else if (a === "new") { nav = "new"; await viewNew(view); }
+    else if (a === "batches" && b) { nav = "checks"; await viewBatch(view, b); }
     else if (a === "checks" && b) { nav = "checks"; await viewCheck(view, b, query.get("tab") || "summary"); }
     else if (a === "checks") { nav = "checks"; await viewChecks(view, query); }
     else if (a === "people" && b) { nav = "people"; await viewPerson(view, b); }
@@ -1207,7 +1208,7 @@ async function viewNew(view) {
       <div class="page-head">
         <div>
           <h1>New check</h1>
-          <p>Add everything related to the payments you want to check.</p>
+          <p>Add your bank statement and all your screenshots, invoices and chats at once. FinSync sorts them by person and checks every payment.</p>
         </div>
       </div>
 
@@ -1311,7 +1312,7 @@ async function runCheck() {
 
   const overlay = document.createElement("div");
   overlay.className = "processing";
-  const steps = ["Reading your files", "Finding amounts and names", "Matching with your bank", "Looking for problems"];
+  const steps = ["Reading your files", "Finding amounts and names", "Sorting payments by person", "Matching with your bank", "Looking for problems"];
   overlay.innerHTML = `
     <div class="card box" role="alertdialog" aria-live="polite" aria-label="Checking payments">
       <div class="spinner"></div>
@@ -1332,13 +1333,15 @@ async function runCheck() {
   const minWait = new Promise((r) => setTimeout(r, 1800));
 
   try {
-    const [res] = await Promise.all([api("/api/v1/cases/files", { method: "POST", form }), minWait]);
+    const [res] = await Promise.all([api("/api/v1/batches/files", { method: "POST", form }), minWait]);
     i = steps.length; tick();
     await new Promise((r) => setTimeout(r, 350));
     state.draftFiles = [];
     state.draftText = "";
     invalidateChecks();
-    location.hash = `#/checks/${encodeURIComponent(res.case_id)}`;
+    location.hash = res.batch_id
+      ? `#/batches/${encodeURIComponent(res.batch_id)}`
+      : `#/checks/${encodeURIComponent(res.case_id)}`;
   } catch (err) {
     toast(err.message, "error");
   } finally {
@@ -1412,6 +1415,92 @@ const TABS = [
 
 const caseCache = new Map(); // case_id -> { result, review }
 
+/* ---------------------------------------------------------
+   One upload, many payments
+   --------------------------------------------------------- */
+function batchOf(caseId) {
+  const m = /^(BATCH-[0-9a-f]+)-\d+$/i.exec(caseId || "");
+  return m ? m[1] : null;
+}
+
+async function viewBatch(view, id) {
+  view.innerHTML = loadingState();
+  const b = await api(`/api/v1/batches/${encodeURIComponent(id)}`);
+  const checks = b.checks || [];
+  const mi = b.money_in || {}, mo = b.money_out || {};
+  const hasOut = (mo.billed || 0) > 0;
+  const people = checks.filter((c) => c.flow !== "out");
+  const bills = checks.filter((c) => c.flow === "out");
+
+  const row = (c) => {
+    const due = c.outstanding_amount || 0;
+    return `<tr>
+      <td><a href="#/checks/${encodeURIComponent(c.case_id)}">${esc(c.counterparty || "Unnamed payment")}</a></td>
+      <td class="num hide-sm">${inr(c.expected_amount)}</td>
+      <td class="num">${inr(c.matched_amount)}</td>
+      <td class="num ${due > 0 ? "t-amber" : ""}">${inr(due)}</td>
+      <td>${statusPill(c.status)}</td>
+    </tr>`;
+  };
+  const table = (rows, heads) => `
+    <div class="recon-wrap"><table class="recon">
+      <thead><tr><th>${heads[0]}</th><th class="num hide-sm">${heads[1]}</th><th class="num">${heads[2]}</th><th class="num">${heads[3]}</th><th>Status</th></tr></thead>
+      <tbody>${rows.map(row).join("")}</tbody>
+    </table></div>`;
+
+  const lines = b.unexplained || [];
+  const lineHtml = lines.map((u) => {
+    const inFlow = u.direction === "CREDIT";
+    return `<li class="nb-line">
+      <div><b>${esc(u.description || u.reference || "Bank entry")}</b>
+        <span class="muted small">${esc(fmtDate(u.date))}${u.reference ? ` · Ref ${esc(u.reference)}` : ""}</span>
+        ${u.maybe_for ? `<span class="small t-amber">Could be ${esc(u.maybe_for)}'s payment. Open that check to choose.</span>` : ""}
+      </div>
+      <span class="money ${inFlow ? "t-green" : ""}">${inFlow ? "+" : "−"}${inr(u.amount)}</span>
+    </li>`;
+  }).join("");
+
+  view.innerHTML = `
+    <div class="page">
+      <a class="back-link" href="#/checks">${icon("arrow_back")}All checks</a>
+      <div class="page-head">
+        <div>
+          <h1>${b.payments} payments found in one upload</h1>
+          <p>${esc(fmtDate(b.created_at, true))}${(b.statement_files || []).length ? ` · Checked against ${esc(b.statement_files.join(", "))} (${b.statement_rows} bank entries)` : " · No bank statement was added"}</p>
+        </div>
+      </div>
+
+      <section class="stats stats-5" aria-label="This upload">
+        <div class="stat"><span class="label">People said they paid</span><span class="value money">${inr(mi.expected)}</span></div>
+        <div class="stat"><span class="label">Found in your bank</span><span class="value money t-green">${inr(mi.received)}</span></div>
+        <div class="stat"><span class="label">Still due</span><span class="value money ${(mi.due || 0) > 0 ? "t-amber" : ""}">${inr(mi.due)}</span></div>
+        <div class="stat"><span class="label">${hasOut ? "Bills you paid" : "Payments"}</span><span class="value ${hasOut ? "money" : ""}">${hasOut ? inr(mo.paid) : b.payments}</span></div>
+        <div class="stat"><span class="label">Need your review</span><span class="value ${b.needs_review ? "t-red" : ""}">${b.needs_review}</span></div>
+      </section>
+
+      <div class="dash mt-16">
+        <section class="panel card-pad" aria-labelledby="who-h">
+          <div class="card-head"><h2 id="who-h">Who paid what</h2></div>
+          ${people.length ? table(people, ["Person", "Said they paid", "In your bank", "Still due"]) : `<p class="muted">No incoming payments in this upload.</p>`}
+          ${bills.length ? `<h3 class="mt-24">Bills you paid</h3>${table(bills, ["Paid to", "Bill amount", "Paid from bank", "Unpaid"])}` : ""}
+        </section>
+        <section class="panel card-pad" aria-labelledby="st-h">
+          <div class="card-head"><h2 id="st-h">Payment status</h2></div>
+          ${statusDonut(checks)}
+          ${collectionBar(mi.received || 0, mi.expected || 0)}
+        </section>
+      </div>
+
+      ${lines.length ? `
+        <h2 class="section-title">Bank entries with no proof</h2>
+        <p class="muted small">Money that moved in your account but none of the uploaded screenshots, invoices or chats explains it.</p>
+        <div class="panel"><ul class="list nb-list">${lineHtml}</ul></div>` : ""}
+
+      ${(b.unread_files || []).length ? `
+        <div class="callout tone-amber mt-16">${icon("alert")}<span>We couldn't find a payment in: ${esc(b.unread_files.join(", "))}. Check that the photo is clear, or paste the details as text.</span></div>` : ""}
+    </div>`;
+}
+
 async function viewCheck(view, id, tab) {
   const cached = caseCache.get(id);
   if (!cached) view.innerHTML = loadingState();
@@ -1435,7 +1524,9 @@ async function viewCheck(view, id, tab) {
 
   view.innerHTML = `
     <div class="page">
-      <a class="back-link" href="#/checks">${icon("arrow_back")}All checks</a>
+      ${batchOf(id)
+        ? `<a class="back-link" href="#/batches/${encodeURIComponent(batchOf(id))}">${icon("arrow_back")}All payments in this upload</a>`
+        : `<a class="back-link" href="#/checks">${icon("arrow_back")}All checks</a>`}
 
       <section class="verdict" data-tour="verdict">
         <div class="verdict-top">
@@ -2274,6 +2365,7 @@ function viewHelp(view) {
       <section class="card faq">
         <details><summary>Why is the bank statement so important?</summary><p>A screenshot or a "payment done" message is just a claim. Only your bank statement proves money actually arrived. FinSync uses the statement as the source of truth and checks everything else against it.</p></details>
         <details><summary>Can FinSync read screenshots and photos?</summary><p>Yes. Payment screenshots, photos of receipts and scanned PDFs are read with OCR, which turns the picture into text. The same rules then pick out the amount, name and UTR. OCR can misread a blurry image, so check the amount against the original. The amount you actually received always comes from your bank statement.</p></details>
+        <details><summary>Can I upload many people's payments at once?</summary><p>Yes. Add your bank statement and all the screenshots, invoices and chats together in one check. FinSync sorts them by payment (same UTR or UPI reference, otherwise same person and amount) and checks each one on its own against the statement. You get a summary with one row per person: how much they said they paid, how much is in your bank, and what is still due. It also lists bank entries that none of your files explains.</p></details>
         <details><summary>Which bank statement format works?</summary><p>A CSV or PDF statement from your net-banking (HDFC, ICICI, SBI, Axis and most others), or a Razorpay settlement report. Columns like Date, Narration or Beneficiary, UTR / Ref No, Withdrawal / Debit, Deposit / Credit and Balance are recognised automatically, even with extra text like "(INR)". Scanned PDF statements are read with OCR.</p></details>
         <details><summary>Can I check bills I paid, not just money I'm owed?</summary><p>Yes. Upload a supplier's bill with your bank statement. If the bill's UTR, or the supplier's name and exact amount, shows up as money going out of your account, FinSync treats it as a bill you paid and checks that it was paid in full.</p></details>
         <details><summary>What does "Review" mean?</summary><p>When something doesn't add up, FinSync asks you to decide. Approve it, mark it wrong, or keep it open until you get more proof. Your decision never changes the underlying numbers — it's recorded alongside them.</p></details>
