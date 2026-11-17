@@ -361,6 +361,7 @@ async function initAuth() {
     const res = await fetch("/api/v1/config", { cache: "no-store" });
     if (!res.ok) throw new Error();
     cfg = await res.json();
+    state.config = cfg;
   } catch {
     state.bootError = "Can't reach FinSync right now. Check your connection and try again.";
     return;
@@ -405,6 +406,20 @@ async function initAuth() {
     if (event === "SIGNED_OUT") { state.recovery = false; caseCache.clear(); }
     if (!!state.user !== wasSignedIn) { invalidateChecks(); render(); }
   });
+}
+
+/* Whether the Google provider is switched on in Supabase (public auth settings). */
+let googleCheck = null;
+function googleEnabled() {
+  if (!googleCheck) {
+    const cfg = state.config || {};
+    googleCheck = !cfg.supabase_url ? Promise.resolve(false)
+      : fetch(`${cfg.supabase_url}/auth/v1/settings`, { headers: { apikey: cfg.supabase_anon_key } })
+          .then((r) => (r.ok ? r.json() : {}))
+          .then((d) => !!(d.external && d.external.google))
+          .catch(() => false);
+  }
+  return googleCheck;
 }
 
 /* What a confirmation / reset email link put in the URL, if anything. */
@@ -621,6 +636,13 @@ function renderAuth(mode = "signin") {
       <button role="tab" type="button" data-mode="signin">Sign in</button>
       <button role="tab" type="button" data-mode="signup">Create account</button>
     </div>
+    <div id="google-wrap" hidden>
+      <button class="btn btn-secondary btn-lg btn-block google-btn" type="button" id="google-btn">
+        <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>
+        <span>Continue with Google</span>
+      </button>
+      <div class="auth-or"><span>or use email</span></div>
+    </div>
     <form id="auth-form" class="stack" novalidate>
       ${fieldHtml({ id: "auth-name", label: "Your name", max: LIMITS.nameMax, auto: "name", placeholder: "e.g. Priya Sharma" })}
       ${fieldHtml({ id: "auth-email", label: "Email", type: "email", max: LIMITS.emailMax, auto: "email", placeholder: "name@gmail.com" })}
@@ -637,6 +659,7 @@ function renderAuth(mode = "signin") {
     current = m;
     $$("#auth-seg button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === m)));
     $("#auth-seg").hidden = m === "reset";
+    $("#google-wrap").hidden = m === "reset" || !state.googleEnabled;
     $("#auth-title").textContent = { signin: "Welcome back", signup: "Create your account", reset: "Reset your password" }[m];
     $("#auth-sub").textContent = {
       signin: "Sign in to see your payment checks.",
@@ -683,6 +706,27 @@ function renderAuth(mode = "signin") {
   wireReveal(app);
   $$("#auth-seg button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
   $("#auth-forgot").addEventListener("click", () => setMode(current === "reset" ? "signin" : "reset"));
+
+  // "Continue with Google" appears only once Google is switched on in Supabase.
+  googleEnabled().then((on) => {
+    state.googleEnabled = on;
+    const wrap = $("#google-wrap");
+    if (wrap) wrap.hidden = !on || current === "reset";
+  });
+  $("#google-btn").addEventListener("click", async () => {
+    const btn = $("#google-btn");
+    btn.disabled = true;
+    const { error } = await state.sb.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: location.origin, queryParams: { prompt: "select_account" } },
+    });
+    if (error) {
+      btn.disabled = false;
+      showMsg(esc(/not enabled|unsupported provider/i.test(error.message)
+        ? "Google sign-in isn't switched on yet. Use your email and password for now."
+        : friendlyAuthError(error)));
+    }
+  });
 
   // Validate on blur, re-validate live once a field has shown an error.
   const validators = { "auth-name": validateName, "auth-email": validateEmail, "auth-pw": (v) => (current === "signup" ? validatePassword(v) : v ? "" : "Enter your password.") };

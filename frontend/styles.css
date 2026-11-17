@@ -771,3 +771,8 @@ table.t { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 .answered-head { display: flex; gap: 12px; align-items: center; }
 .answered-head .ico { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; }
 .answered-head h2 { font-size: 18px; }
+
+/* Continue with Google */
+.google-btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+.auth-or { display: flex; align-items: center; gap: 12px; margin: 14px 0 2px; color: var(--muted); font-size: 13px; }
+.auth-or::before, .auth-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
