@@ -1,4 +1,4 @@
-"""Unified Entity Resolution Service for VERITY.
+"""Unified Entity Resolution Service for FinSync.
 
 Orchestrates candidate generation, multi-signal scoring, ambiguity preservation,
 and conflict detection for financial claims and queries.
@@ -26,6 +26,7 @@ class EntityResolutionService(BaseEntityResolver):
     """Central service managing entity candidate retrieval, scoring, and resolution."""
 
     def __init__(self, registry: Optional[EntityRegistry] = None) -> None:
+        """Creates the name-linking stage on top of a registry."""
         self.registry = registry or EntityRegistry()
 
     def register_entity(self, entity: Entity) -> None:

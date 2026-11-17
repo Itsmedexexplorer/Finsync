@@ -1,4 +1,4 @@
-"""Text and Messaging Chat Ingestion Adapter for VERITY.
+"""Text and Messaging Chat Ingestion Adapter for FinSync.
 
 Handles raw text strings, WhatsApp chat export logs, and SMS messages,
 supporting multilingual scripts (Devanagari, Tamil, Kannada, etc.) and Hinglish.
@@ -21,10 +21,12 @@ class TextMessageAdapter(BaseIngestionAdapter):
 
     @property
     def supported_modalities(self) -> List[EvidenceModality]:
+        """The kinds of evidence this adapter produces (for example bank statement, invoice, screenshot, chat)."""
         return [EvidenceModality.MESSAGING_CHAT]
 
     @property
     def supported_extensions(self) -> List[str]:
+        """The file extensions this adapter accepts."""
         return [".txt", ".log", ".chat"]
 
     # Patterns for standard WhatsApp / SMS export lines
@@ -43,6 +45,7 @@ class TextMessageAdapter(BaseIngestionAdapter):
         source_type: Optional[EvidenceSourceType] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> IngestionResult:
+        """Reads the file from disk (checking it exists and is not empty) and passes its content to ingest_payload."""
         path = Path(file_path)
         if not path.exists():
             return IngestionResult.create_failure(
@@ -98,6 +101,7 @@ class TextMessageAdapter(BaseIngestionAdapter):
         source_type: Optional[EvidenceSourceType] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> IngestionResult:
+        """Turns a chat export or pasted text into evidence items, one per message when timestamps are present."""
         if isinstance(raw_content, bytes):
             try:
                 text_content = raw_content.decode("utf-8")

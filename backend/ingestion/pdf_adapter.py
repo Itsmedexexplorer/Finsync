@@ -1,4 +1,4 @@
-"""PDF Document Ingestion Adapter for VERITY.
+"""PDF Document Ingestion Adapter for FinSync.
 
 Extracts text and metadata from PDF invoices, receipts, and bank statements using pypdf.
 Accurately differentiates text-based digital PDFs from scanned image documents.
@@ -27,6 +27,7 @@ class PDFDocumentAdapter(BaseIngestionAdapter):
 
     @property
     def supported_modalities(self) -> List[EvidenceModality]:
+        """The kinds of evidence this adapter produces (for example bank statement, invoice, screenshot, chat)."""
         return [
             EvidenceModality.INVOICE,
             EvidenceModality.RECEIPT,
@@ -35,6 +36,7 @@ class PDFDocumentAdapter(BaseIngestionAdapter):
 
     @property
     def supported_extensions(self) -> List[str]:
+        """The file extensions this adapter accepts."""
         return [".pdf"]
 
     def ingest_file(
@@ -43,6 +45,7 @@ class PDFDocumentAdapter(BaseIngestionAdapter):
         source_type: Optional[EvidenceSourceType] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> IngestionResult:
+        """Reads the file from disk (checking it exists and is not empty) and passes its content to ingest_payload."""
         path = Path(file_path)
         if not path.exists():
             return IngestionResult.create_failure(
@@ -93,6 +96,7 @@ class PDFDocumentAdapter(BaseIngestionAdapter):
         source_type: Optional[EvidenceSourceType] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> IngestionResult:
+        """Reads a PDF: a bank statement becomes one evidence item per row; an invoice or receipt becomes one evidence item with its text (or its page images, when scanned)."""
         if isinstance(raw_content, str):
             pdf_bytes = raw_content.encode("latin-1", errors="ignore")
         else:
@@ -177,7 +181,7 @@ class PDFDocumentAdapter(BaseIngestionAdapter):
             },
         }
 
-        # Store extracted page images for VLM extraction (scanned PDFs only)
+        # Keep the page images of a scanned PDF so OCR can read them
         if page_images_b64:
             item_meta["page_images_b64"] = page_images_b64
 
@@ -248,7 +252,7 @@ class PDFDocumentAdapter(BaseIngestionAdapter):
         return result if result.evidence_items else None
 
     def _extract_page_images(self, reader: pypdf.PdfReader) -> List[Dict[str, Any]]:
-        """Extract embedded images from PDF pages for VLM extraction.
+        """Extract embedded images from PDF pages so OCR can read scanned documents.
 
         Returns a list of dicts with 'page_number', 'image_b64', and 'mime_type'.
         """

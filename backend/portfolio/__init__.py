@@ -1,4 +1,4 @@
-"""VERITY Financial Case Portfolio & Operations Intelligence Subsystem."""
+"""FinSync Financial Case Portfolio & Operations Intelligence Subsystem."""
 
 from backend.portfolio.aggregator import PortfolioAggregator
 from backend.portfolio.assignment import PortfolioAssignmentService

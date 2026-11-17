@@ -1,4 +1,4 @@
-"""Deterministic Explainability Engine for VERITY Financial Truth Reporting.
+"""Deterministic Explainability Engine for FinSync Financial Truth Reporting.
 
 Generates structured explanations, confidence factor breakdowns, and recommended actions
 strictly from verified domain facts without using LLMs or hallucinating information.

@@ -1,4 +1,4 @@
-"""VERITY Portfolio Aggregation Engine (Day 15).
+"""FinSync Portfolio Aggregation Engine.
 
 Converts existing CaseProcessingResult, FinancialTruthReport, ControllerDecision,
 and ReviewRecord data into normalized CasePortfolioItem models and computes

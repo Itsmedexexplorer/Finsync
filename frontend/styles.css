@@ -1,4 +1,17 @@
 /* =========================================================
+   FinSync styles (one stylesheet for the whole app)
+
+   How it works: colours, spacing and fonts are CSS variables
+   ("design tokens") defined once on :root. The dark theme only
+   redefines those variables, so every component switches theme
+   without its own dark-mode rules. Sections below follow the
+   order of app.js: tokens, base, layout, components, then pages.
+   Small screens are handled with @media rules at the end of each
+   section (sidebar becomes bottom tabs, tables hide less important
+   columns).
+   ========================================================= */
+
+/* =========================================================
    FinSync — design tokens
    Neutral zinc surfaces, hairline borders, ink actions.
    Colour is reserved for meaning (matched / due / mismatch).

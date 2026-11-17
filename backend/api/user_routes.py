@@ -12,6 +12,7 @@ router = APIRouter(tags=["Web App"])
 
 
 def _check_summary(result, created_at: str | None, review) -> Dict[str, Any]:
+    """One row of the checks list: who, status, expected / received / still due, review state, batch id and money direction."""
     report = result.report
     fs = result.financial_summary or {}
     recon = result.reconciliation
@@ -51,6 +52,7 @@ def _flow(report) -> str:
 
 
 def _all_checks() -> List[Dict[str, Any]]:
+    """Every check in the user's workspace as summary rows, newest first."""
     store = get_case_store()
     review_svc = get_review_service()
     records = store.storage.list_cases(limit=1000)
@@ -82,6 +84,7 @@ def batch_summary(batch_id: str) -> Dict[str, Any]:
     checks.sort(key=lambda c: c["case_id"])
 
     def total(flow: str, key: str) -> float:
+        """Adds up one amount field over the checks with the given money direction ('in' or 'out')."""
         return round(sum((c.get(key) or 0.0) for c in checks if c["flow"] == flow), 2)
 
     counts: Dict[str, int] = {}

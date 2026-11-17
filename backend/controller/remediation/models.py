@@ -1,4 +1,4 @@
-"""Domain and Schema models for VERITY Proactive Remediation & Actions (Day 19).
+"""Domain and Schema models for FinSync Proactive Remediation & Actions.
 
 Strict Invariants:
 1. NO AUTONOMOUS EXTERNAL ACTION: Output is strictly draft proposals pending human review.
@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 
 def _utc_now_iso() -> str:
+    """The current time in UTC as an ISO-8601 string."""
     return datetime.now(timezone.utc).isoformat()
 
 

@@ -1,4 +1,4 @@
-"""VERITY SLA & Case Aging Engine (Day 15).
+"""FinSync SLA & Case Aging Engine.
 
 Calculates deterministic SLA deadlines, remaining/elapsed durations,
 and SLA operational health statuses (ON_TRACK, DUE_SOON, OVERDUE, PAUSED, COMPLETED).

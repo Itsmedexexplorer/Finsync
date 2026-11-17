@@ -32,6 +32,7 @@ _timers_lock = threading.Lock()
 
 
 def _config():
+    """The Supabase URL, service key and bucket used for workspace backups, if configured."""
     url = os.getenv("SUPABASE_URL", "").rstrip("/")
     key = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
     bucket = os.getenv("VERITY_BACKUP_BUCKET", "workspaces")
@@ -39,11 +40,13 @@ def _config():
 
 
 def enabled() -> bool:
+    """True when workspace backups to Supabase Storage are configured."""
     url, key, _ = _config()
     return bool(url and key)
 
 
 def _headers(key: str) -> Dict[str, str]:
+    """HTTP headers for Supabase Storage requests (service key)."""
     return {"Authorization": f"Bearer {key}", "apikey": key}
 
 
@@ -103,6 +106,7 @@ def _snapshot_db(src: Path) -> bytes:
 
 
 def backup_now(ws: "Workspace") -> None:
+    """Uploads the user's workspace files (database and reviews) to Supabase Storage right away."""
     if not enabled() or ws.dir is None:
         return
     url, key, bucket = _config()

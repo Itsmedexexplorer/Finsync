@@ -1,14 +1,31 @@
 /* =========================================================
-   FinSync web app
-   Plain JS, no build step. Hash routes:
-     #/            Home
-     #/new         New check
-     #/checks      All checks
-     #/checks/:id  One check (?tab=summary|records|review|followups|history)
-     #/people      Customers & vendors
-     #/people/:n   One person
-     #/help        How it works
-     #/account     Account
+   FinSync web app (frontend)
+
+   What it is: the whole user interface of FinSync in one file of plain
+   JavaScript. There is no framework and no build step: index.html loads
+   this file and styles.css, and the browser runs it directly.
+
+   How it works:
+   - Routing: the part of the address after "#" picks the page
+     (see render()). Pages are functions named view...() that fill
+     the main area with HTML.
+       #/              Home dashboard
+       #/new           New check (upload files or paste a message)
+       #/checks        All checks
+       #/checks/:id    One check (?tab=summary|records|review|followups|history)
+       #/batches/:id   One upload that held many payments
+       #/people        Customers and vendors
+       #/people/:name  One person
+       #/help          How it works
+       #/account       Account
+   - Data: every page calls the backend through api(), which adds the
+     Supabase sign-in token. The backend does all reading, matching and
+     deciding; this file only shows the results.
+   - Safety: everything that came from a file or a user is passed
+     through esc() before it is put into HTML.
+   - Order of the file: helpers, plain-language labels, dialogs, API,
+     sign-in, theme, app frame, router, then one section per page,
+     then the guided tour and start-up.
    ========================================================= */
 
 const MAX_UPLOAD_MB = 15;
@@ -28,8 +45,10 @@ const state = {
    Small helpers
    --------------------------------------------------------- */
 const $ = (sel, root = document) => root.querySelector(sel);
+// Shortcut: every element matching a CSS selector, as an array.
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 
+// Escapes text before it goes into HTML, so names or file contents can never inject code (XSS protection).
 function esc(v) {
   return String(v ?? "")
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -131,6 +150,7 @@ const ICON_ALIAS = {
   download: "download", logout: "logout", tag: "tag", undo: "undo",
 };
 
+// The SVG markup of a named icon (unknown names fall back to a plain circle).
 function icon(name, cls = "") {
   const key = ICONS[name] ? name : ICON_ALIAS[name] || "circle";
   return `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[key]}</svg>`;
@@ -138,22 +158,26 @@ function icon(name, cls = "") {
 
 const inrFmt = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 const inrFmt2 = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Formats a number as Indian rupees, e.g. 125000 → ₹1,25,000.
 function inr(n) {
   if (n === null || n === undefined || Number.isNaN(Number(n))) return "—";
   const v = Number(n);
   return Number.isInteger(v) ? inrFmt.format(v) : inrFmt2.format(v);
 }
 
+// A Date from any date-like value, or null when it is not a valid date.
 function parseDate(v) {
   if (!v) return null;
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
 }
+// A date as '15 Aug 2026' (optionally with the time).
 function fmtDate(v, withTime = false) {
   const d = parseDate(v);
   if (!d) return v ? String(v) : "—";
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", ...(withTime ? { hour: "numeric", minute: "2-digit" } : {}) });
 }
+// A date as 'Just now', '5 min ago', '2 h ago', '3 d ago' or the full date.
 function relTime(v) {
   const d = parseDate(v);
   if (!d) return "";
@@ -165,20 +189,24 @@ function relTime(v) {
   return fmtDate(v);
 }
 
+// A file size in KB or MB.
 function fmtSize(bytes) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+// Two initials for an avatar, e.g. 'Pooja Plastics' → 'PP'.
 function initials(name) {
   const parts = String(name || "?").trim().split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] || "?") + (parts[1]?.[0] || "")).toUpperCase();
 }
 
+// SOME_VALUE → 'Some Value', for showing internal codes as words.
 function titleCase(s) {
   return String(s || "").toLowerCase().replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+// Runs fn only after the user stops typing for ms milliseconds (used by search).
 function debounce(fn, ms) {
   let t;
   return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
@@ -197,9 +225,11 @@ const STATUS = {
   DUPLICATE:         { label: "Duplicate",     tone: "blue",  icon: "content_copy", help: "The same payment shows up more than once (e.g. a screenshot and a bank line). It's only counted once." },
   UNMATCHED:         { label: "Unmatched",     tone: "gray",  icon: "link_off",     help: "A bank entry or bill with nothing to pair it with yet." },
 };
+// Label, colour, icon and help text of a check status (e.g. CONFIRMED → 'Matched').
 function statusMeta(s) {
   return STATUS[s] || { label: titleCase(s || "Unknown"), tone: "gray", icon: "radio_button_unchecked", help: "" };
 }
+// The coloured status badge shown in tables and on the check page.
 function statusPill(s, lg = false) {
   const m = statusMeta(s);
   return `<span class="pill tone-${m.tone}${lg ? " lg" : ""}">${icon(m.icon, "fill")}${esc(m.label)}</span>`;
@@ -234,6 +264,7 @@ const ISSUE = {
   DUPLICATE_PAYMENT: { label: "Paid twice", icon: "content_copy" },
   MISSING_LEDGER_PROOF: { label: "No bank entry found", icon: "search_off" },
 };
+// Label and icon for a type of problem (amount mismatch, date mismatch ...).
 function issueMeta(t) { return ISSUE[t] || { label: titleCase(t), icon: "report" }; }
 
 const SEVERITY = {
@@ -242,6 +273,7 @@ const SEVERITY = {
   WARNING: { label: "Check this", tone: "amber" },
   INFO: { label: "Note", tone: "gray" },
 };
+// A small badge showing how serious a problem is.
 function severityPill(s) {
   const m = SEVERITY[s] || { label: titleCase(s), tone: "gray" };
   return `<span class="pill tone-${m.tone}">${esc(m.label)}</span>`;
@@ -254,8 +286,10 @@ const MODALITY = {
   PAYMENT_SCREENSHOT: { label: "Payment screenshot", icon: "smartphone", tone: "amber" },
   CASH_VOUCHER: { label: "Cash receipt", icon: "payments", tone: "gray" },
 };
+// Label and icon for a kind of file (bank statement, invoice, screenshot, chat).
 function modalityMeta(m) { return MODALITY[m] || { label: titleCase(m), icon: "description", tone: "gray" }; }
 
+// The kind of a picked file from its name, for the icon in the upload list.
 function fileKind(name) {
   const ext = (name.match(/\.[^.]+$/)?.[0] || "").toLowerCase();
   if (ext === ".csv") return { label: "Bank statement (CSV)", icon: "account_balance", tone: "brand", bank: true };
@@ -278,6 +312,7 @@ function toast(msg, type = "info") {
   setTimeout(() => el.remove(), type === "error" ? 6000 : 3500);
 }
 
+// An accessible 'Are you sure?' dialog; resolves to true or false.
 function confirmDialog({ title, body, confirm = "Confirm", danger = false }) {
   return new Promise((resolve) => {
     const wrap = document.createElement("div");
@@ -291,6 +326,7 @@ function confirmDialog({ title, body, confirm = "Confirm", danger = false }) {
           <button class="btn ${danger ? "btn-danger" : "btn-primary"}" data-act="yes">${esc(confirm)}</button>
         </div>
       </div>`;
+    // Closes the dialog and returns the user's choice.
     const close = (v) => { wrap.remove(); resolve(v); };
     wrap.addEventListener("click", (e) => {
       if (e.target === wrap) close(false);
@@ -309,6 +345,7 @@ class ApiError extends Error {
   constructor(message, status) { super(message); this.status = status; }
 }
 
+// Calls the FinSync backend: adds the sign-in token, sends JSON or files, and turns errors into readable messages.
 async function api(path, { method = "GET", body, form } = {}) {
   const headers = {};
   if (state.session?.access_token) headers.Authorization = `Bearer ${state.session.access_token}`;
@@ -334,14 +371,17 @@ async function api(path, { method = "GET", body, form } = {}) {
   return data;
 }
 
+// The list of the user's checks, cached so pages open instantly (force=true reloads it).
 async function loadChecks(force = false) {
   if (!force && state.checks) return state.checks;
   state.checks = await api("/api/v1/checks");
   updateBadges();
   return state.checks;
 }
+// Forgets the cached list of checks, so the next page load fetches it fresh.
 function invalidateChecks() { state.checks = null; }
 
+// True when a check still needs the user: not matched and not yet answered.
 function needsAttention(c) {
   return c.requires_review && !["RESOLVED", "CLOSED"].includes(c.review_status || "");
 }
@@ -355,6 +395,7 @@ function needsAttention(c) {
 const LIMITS = { nameMin: 2, nameMax: 50, emailMax: 254, pwMin: 8, pwMax: 72 };
 const RESEND_COOLDOWN_S = 60;
 
+// Starts sign-in: reads the server config, creates the Supabase client and restores a saved session.
 async function initAuth() {
   let cfg;
   try {
@@ -410,6 +451,7 @@ async function initAuth() {
 
 /* Whether the Google provider is switched on in Supabase (public auth settings). */
 let googleCheck = null;
+// Asks Supabase (once) whether Google sign-in is switched on, to show or hide the Google button.
 function googleEnabled() {
   if (!googleCheck) {
     const cfg = state.config || {};
@@ -458,6 +500,7 @@ function handleAuthRedirect({ err, errCode, type, fromEmail }) {
   history.replaceState(null, "", location.pathname + "#/");
 }
 
+// Stores the signed-in user (id, email, name) from a Supabase session.
 function setSession(session) {
   state.session = session || null;
   const u = session?.user;
@@ -468,6 +511,7 @@ function setSession(session) {
   } : null;
 }
 
+// Signs out and returns to the sign-in screen.
 async function signOut(silent = false) {
   if (state.sb) await state.sb.auth.signOut().catch(() => {});
   setSession(null);
@@ -479,6 +523,7 @@ async function signOut(silent = false) {
   render();
 }
 
+// The screen shown when the server or sign-in cannot be reached.
 function renderBootError() {
   $("#app").innerHTML = `
     <div class="auth-panel" style="min-height:100vh">
@@ -503,6 +548,7 @@ const DOMAIN_TYPOS = {
   "rediffmail.co": "rediffmail.com", "icloud.co": "icloud.com",
 };
 
+// Error message for an invalid name, or empty when it is fine.
 function validateName(v) {
   const name = v.trim().replace(/\s+/g, " ");
   if (!name) return "Enter your name.";
@@ -512,6 +558,7 @@ function validateName(v) {
   return "";
 }
 
+// Error message for an invalid email address, or empty when it is fine.
 function validateEmail(v) {
   const email = v.trim();
   if (!email) return "Enter your email address.";
@@ -532,10 +579,12 @@ const PW_RULES = [
   { id: "digit", label: "A number", test: (p) => /\d/.test(p) },
   { id: "symbol", label: "A special character (!@#$…)", test: (p) => /[^A-Za-z0-9\s]/.test(p) },
 ];
+// Error message when a new password misses a rule, or empty when it is fine.
 function validatePassword(p) {
   const failed = PW_RULES.filter((r) => !r.test(p));
   return failed.length ? `Password needs: ${failed.map((r) => r.label.toLowerCase()).join(", ")}.` : "";
 }
+// The live password checklist (length, letter, number ...) under the password box.
 function pwChecklist(p) {
   return PW_RULES.map((r) => {
     const ok = r.test(p);
@@ -545,12 +594,16 @@ function pwChecklist(p) {
 
 /* --- Sign-in attempt throttling (on top of Supabase's server-side limits) --- */
 const ATTEMPT_KEY = "verity.auth.attempts";
+// Failed sign-in attempts saved in this browser (used to slow down guessing).
 function readAttempts() {
   try { return JSON.parse(localStorage.getItem(ATTEMPT_KEY)) || { fails: 0, until: 0 }; }
   catch { return { fails: 0, until: 0 }; }
 }
+// Saves failed sign-in attempts in this browser.
 function writeAttempts(a) { try { localStorage.setItem(ATTEMPT_KEY, JSON.stringify(a)); } catch { /* storage blocked */ } }
+// Seconds until sign-in is allowed again after too many failed attempts.
 function lockSecondsLeft() { return Math.max(0, Math.ceil((readAttempts().until - Date.now()) / 1000)); }
+// Counts a failed sign-in; after 5 the button is locked for a while.
 function recordFailedSignIn() {
   const a = readAttempts();
   a.fails += 1;
@@ -558,10 +611,13 @@ function recordFailedSignIn() {
   if (a.fails >= 5) a.until = Date.now() + Math.min(900, 30 * 2 ** (a.fails - 5)) * 1000;
   writeAttempts(a);
 }
+// Resets the failed sign-in count after a successful sign-in.
 function clearFailedSignIns() { writeAttempts({ fails: 0, until: 0 }); }
 
 const cooldowns = {};
+// Starts a wait before an email (confirmation or reset) can be sent again.
 function startCooldown(key, seconds) { cooldowns[key] = Date.now() + seconds * 1000; }
+// Seconds left before that email can be sent again.
 function cooldownLeft(key) { return Math.max(0, Math.ceil(((cooldowns[key] || 0) - Date.now()) / 1000)); }
 
 /* --- Screens --- */
@@ -593,6 +649,7 @@ function authShell(inner) {
     </div>`;
 }
 
+// HTML for one labelled form field with room for an error message.
 function fieldHtml({ id, label, type = "text", max, auto, placeholder, hint = "" }) {
   return `
     <div class="field" id="${id}-field">
@@ -606,6 +663,7 @@ function fieldHtml({ id, label, type = "text", max, auto, placeholder, hint = ""
     </div>`;
 }
 
+// Shows or clears the error message under a form field.
 function setFieldError(id, msg) {
   const el = $(`#${id}-error`);
   const input = $(`#${id}`);
@@ -615,6 +673,7 @@ function setFieldError(id, msg) {
   input.setAttribute("aria-invalid", msg ? "true" : "false");
 }
 
+// Makes the eye button show or hide the password.
 function wireReveal(root) {
   $$("[data-reveal]", root).forEach((b) => b.addEventListener("click", () => {
     const input = $(`#${b.dataset.reveal}`);
@@ -625,6 +684,7 @@ function wireReveal(root) {
   }));
 }
 
+// The sign-in / create account / reset password screen, with Google sign-in when enabled.
 function renderAuth(mode = "signin") {
   const app = $("#app");
   app.innerHTML = authShell(`
@@ -655,6 +715,7 @@ function renderAuth(mode = "signin") {
 
   let current = mode;
   let pendingEmail = "";
+  // Switches the form between sign in, create account and reset password.
   const setMode = (m) => {
     current = m;
     $$("#auth-seg button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.mode === m)));
@@ -678,6 +739,7 @@ function renderAuth(mode = "signin") {
     updateSubmit();
   };
 
+  // Updates the main button text and disables it during lockouts and cooldowns.
   const updateSubmit = () => {
     const btn = $("#auth-submit");
     const lock = current === "signin" ? lockSecondsLeft() : 0;
@@ -740,6 +802,7 @@ function renderAuth(mode = "signin") {
     });
   });
 
+  // Shows a success or error message on the sign-in form.
   function showMsg(html, ok = false) {
     const el = $("#auth-msg");
     el.className = ok ? "form-ok" : "form-error";
@@ -849,6 +912,7 @@ function renderNewPassword() {
   });
 }
 
+// A plain-English version of a Supabase sign-in error.
 function friendlyAuthError(err) {
   const m = String(err?.message || err || "");
   if (/invalid login/i.test(m)) {
@@ -869,7 +933,9 @@ function friendlyAuthError(err) {
    Theme (light / dark / system)
    --------------------------------------------------------- */
 const THEME_KEY = "verity.theme";
+// The saved theme: light, dark or system.
 function getThemePref() { try { return localStorage.getItem(THEME_KEY) || "system"; } catch { return "system"; } }
+// Applies a theme to the page (system follows the phone or computer setting).
 function applyTheme(pref) {
   const root = document.documentElement;
   if (pref === "light" || pref === "dark") root.setAttribute("data-theme", pref);
@@ -878,10 +944,12 @@ function applyTheme(pref) {
   $('meta[name="theme-color"]')?.setAttribute("content", dark ? "#0E0E10" : "#FAFAFA");
   $$("[data-theme-set]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.themeSet === pref)));
 }
+// Saves and applies a theme choice.
 function setThemePref(pref) {
   try { localStorage.setItem(THEME_KEY, pref); } catch { /* storage blocked */ }
   applyTheme(pref);
 }
+// The light / dark / system switch.
 function themeToggleHtml() {
   const opts = [["light", "sun", "Light"], ["dark", "moon", "Dark"], ["system", "monitor", "System"]];
   const pref = getThemePref();
@@ -904,6 +972,7 @@ const NAV = [
   { id: "help", href: "#/help", label: "How it works", icon: "lightbulb" },
 ];
 
+// The app frame: sidebar on desktop, bottom tabs on phones, and the area where pages appear.
 function renderShell() {
   const u = state.user;
   const app = $("#app");
@@ -945,10 +1014,12 @@ function renderShell() {
   updateBadges();
 }
 
+// Highlights the current page in the navigation.
 function setActiveNav(id) {
   $$("[data-nav]").forEach((a) => a.classList.toggle("active", a.dataset.nav === id));
 }
 
+// Shows how many checks need attention on the Checks menu item.
 function updateBadges() {
   const n = (state.checks || []).filter(needsAttention).length;
   $$("[data-badge]").forEach((b) => { b.hidden = !n; b.textContent = n; });
@@ -964,6 +1035,7 @@ function parseHash() {
 }
 
 let renderToken = 0;
+// The router: shows the page that matches the address (home, new check, a check, a batch upload ...).
 async function render() {
   const token = ++renderToken;
   $("#boot").hidden = true;
@@ -1003,6 +1075,7 @@ async function render() {
   maybeStartTours(a, b);
 }
 
+// The message shown when a page could not load, with a Try again button.
 function errorState(err) {
   return `
     <div class="page">
@@ -1015,6 +1088,7 @@ function errorState(err) {
     </div>`;
 }
 
+// Grey placeholder blocks shown while a page loads.
 function loadingState() {
   return `<div class="page stack">
     <div class="skeleton" style="height:36px;width:220px"></div>
@@ -1031,6 +1105,7 @@ function greeting() {
   return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
 }
 
+// One row of a list of checks: who, amounts, status and when.
 function checkRow(c) {
   const who = c.counterparty || (c.status === "UNMATCHED" ? "Unknown payer" : "Unnamed check");
   return `
@@ -1049,6 +1124,7 @@ function checkRow(c) {
     </li>`;
 }
 
+// Home dashboard: totals, recent reconciliations table, status chart and checks waiting for review.
 async function viewHome(view) {
   view.innerHTML = loadingState();
   const checks = await loadChecks(true);
@@ -1134,6 +1210,7 @@ async function viewHome(view) {
 /* --- Home dashboard pieces --- */
 const TONE_COLOR = { green: "var(--green)", amber: "var(--amber)", red: "var(--red)", blue: "var(--blue)", gray: "var(--faint)" };
 
+// The 'Recent reconciliations' table: who, expected, received and status.
 function reconTable(rows) {
   return `
     <div class="recon-wrap">
@@ -1153,6 +1230,7 @@ function reconTable(rows) {
     </div>`;
 }
 
+// The donut chart of checks by status, drawn as SVG with a legend.
 function statusDonut(checks) {
   // Group by the label people see, so statuses that share a label share a slice.
   const groups = new Map();
@@ -1189,6 +1267,7 @@ function statusDonut(checks) {
     </div>`;
 }
 
+// The 'Collected ₹X of ₹Y' progress bar.
 function collectionBar(received, expected) {
   if (!expected) return "";
   const pct = Math.max(0, Math.min(100, Math.round((received / expected) * 100)));
@@ -1256,6 +1335,7 @@ async function viewNew(view) {
   const paste = $("#paste");
   paste.value = state.draftText;
 
+  // Redraws the list of picked files and enables the Check button when there is something to check.
   const refresh = () => {
     $("#file-list").innerHTML = state.draftFiles.map((f, i) => {
       const k = fileKind(f.name);
@@ -1277,6 +1357,7 @@ async function viewNew(view) {
     $("#run-check").disabled = !hasAny;
   };
 
+  // Adds picked files after checking their type and size (max 15 MB each).
   const addFiles = (list) => {
     for (const f of list) {
       const ext = (f.name.match(/\.[^.]+$/)?.[0] || "").toLowerCase();
@@ -1303,6 +1384,7 @@ async function viewNew(view) {
   refresh();
 }
 
+// Uploads everything and shows progress; one payment opens its check, several open the batch summary.
 async function runCheck() {
   const text = state.draftText.trim();
   const form = new FormData();
@@ -1322,6 +1404,7 @@ async function runCheck() {
   document.body.appendChild(overlay);
   const lis = $$(".proc-steps li", overlay);
   let i = 0;
+  // Moves the progress list to the next step.
   const tick = () => {
     lis.forEach((li, j) => {
       li.className = j < i ? "done" : j === i ? "on" : "";
@@ -1361,6 +1444,7 @@ const FILTERS = [
   { id: "problems", label: "Mismatch", test: (c) => ["CONTRADICTED", "AMBIGUOUS"].includes(c.status) || c.issues_count > 0 },
 ];
 
+// The list of all checks with filters (needs review, matched, money due, mismatch) and search.
 async function viewChecks(view, query) {
   view.innerHTML = loadingState();
   const checks = await loadChecks(true);
@@ -1388,6 +1472,7 @@ async function viewChecks(view, query) {
     </div>`;
   if (!checks.length) return;
 
+  // Redraws the list for the current filter and search text.
   const draw = () => {
     const f = FILTERS.find((x) => x.id === filter) || FILTERS[0];
     const ql = q.toLowerCase();
@@ -1423,6 +1508,7 @@ function batchOf(caseId) {
   return m ? m[1] : null;
 }
 
+// The page for one upload with many payments: totals, who paid what, bills paid, status chart and bank entries with no proof.
 async function viewBatch(view, id) {
   view.innerHTML = loadingState();
   const b = await api(`/api/v1/batches/${encodeURIComponent(id)}`);
@@ -1432,6 +1518,7 @@ async function viewBatch(view, id) {
   const people = checks.filter((c) => c.flow !== "out");
   const bills = checks.filter((c) => c.flow === "out");
 
+  // One person's row: said they paid, in the bank, still due and status.
   const row = (c) => {
     const due = c.outstanding_amount || 0;
     return `<tr>
@@ -1442,6 +1529,7 @@ async function viewBatch(view, id) {
       <td>${statusPill(c.status)}</td>
     </tr>`;
   };
+  // A table of payments with the given column headings.
   const table = (rows, heads) => `
     <div class="recon-wrap"><table class="recon">
       <thead><tr><th>${heads[0]}</th><th class="num hide-sm">${heads[1]}</th><th class="num">${heads[2]}</th><th class="num">${heads[3]}</th><th>Status</th></tr></thead>
@@ -1501,6 +1589,7 @@ async function viewBatch(view, id) {
     </div>`;
 }
 
+// One check: the verdict (status, amount in bank, still due), the question to answer, and the tabs.
 async function viewCheck(view, id, tab) {
   const cached = caseCache.get(id);
   if (!cached) view.innerHTML = loadingState();
@@ -1577,10 +1666,12 @@ async function viewCheck(view, id, tab) {
   else renderSummaryTab(body, ctx);
 }
 
+// The person's name, or null when it was not found.
 function knownName(n) {
   return n && !/^unknown/i.test(n.trim()) ? n : null;
 }
 
+// One plain-English sentence for the result, e.g. 'Pooja Plastics has paid part of it. ₹30,000 is still due.'
 function plainSummary(result, r, who) {
   const name = who || "this party";
   const fs = result.financial_summary || {};
@@ -1612,6 +1703,7 @@ function plainSummary(result, r, who) {
   }
 }
 
+// Summary tab: what did not add up, what to do next, and 'Ask about this check'.
 function renderSummaryTab(body, { id, report: r }) {
   const issues = r.contradiction_summary || [];
   const unresolved = (r.unresolved_items || []).filter((u) => u.item_type !== "DISCREPANCY");
@@ -1663,6 +1755,7 @@ function renderSummaryTab(body, { id, report: r }) {
       </div>
     </div>`;
 
+  // Sends a question about this check; the answer is built by fixed rules from the check's own records.
   const ask = async (question) => {
     if (!question) return;
     const box = $("#answers");
@@ -1682,6 +1775,7 @@ function renderSummaryTab(body, { id, report: r }) {
   $$(".suggest button").forEach((b) => b.addEventListener("click", () => ask(b.dataset.q)));
 }
 
+// One problem card: what was claimed vs what the bank shows.
 function issueHtml(d) {
   const m = issueMeta(d.discrepancy_type);
   const sev = SEVERITY[d.severity] || { tone: "gray" };
@@ -1696,12 +1790,16 @@ function issueHtml(d) {
       </div>
     </div>`;
 }
+// A backend message without its internal code prefix.
 function cleanMessage(m) { return String(m || "").replace(/^[A-Z_]+:\s*/, "").replace(/\.\.$/, "."); }
+// Shows a value as rupees when it is an amount, otherwise as plain text.
 function fmtMaybeAmount(v, type = "AMOUNT_MISMATCH") {
   return type === "AMOUNT_MISMATCH" && /^\d+(\.\d+)?$/.test(String(v)) ? inr(Number(v)) : String(v);
 }
+// 'Ramesh' → "Ramesh's", 'Agnes' → "Agnes'".
 function possessive(name) { return /s$/i.test(name) ? `${name}'` : `${name}'s`; }
 
+// Records tab: what each file said, the bank lines used, and the files in the check.
 function renderRecordsTab(body, { report: r }) {
   const claims = r.claims_summary || [];
   const txns = r.transaction_summary || [];
@@ -1771,6 +1869,7 @@ function reviewer() {
   return { reviewer_id: state.user?.id || "user", reviewer_name: state.user?.name || "You" };
 }
 
+// Opens the review for this check before the user's first answer is saved.
 async function ensureReviewStarted(id, review) {
   if (["PENDING", "NOT_REQUIRED"].includes(review.status)) {
     return api(`/api/v1/cases/${encodeURIComponent(id)}/review/start`, { method: "POST", body: reviewer() });
@@ -1778,6 +1877,7 @@ async function ensureReviewStarted(id, review) {
   return review;
 }
 
+// Your answer tab: the claim and bank lines side by side, conflicts highlighted, and the answer buttons.
 function renderReviewTab(body, { id, result, review, report: r }) {
   const closed = review.status === "CLOSED";
   const notes = review.notes || [];
@@ -1796,8 +1896,10 @@ function renderReviewTab(body, { id, result, review, report: r }) {
 
   const q = reviewQuestion(result.status, { who, expected, matched, due, issues, hasBank: allTxns.length > 0, paidBill: isPaidBill(r) });
   const bad = new Set(issues.map((d) => d.discrepancy_type));
+  // Marks a cell that conflicts with the bank (for highlighting).
   const flag = (type) => (bad.has(type) ? ' class="conflict"' : "");
 
+  // One row of what a file claimed.
   const claimRow = (c) => {
     const ev = evidenceById[c.evidence_id];
     const src = ev ? modalityMeta(ev.modality).label : "Your records";
@@ -1812,6 +1914,7 @@ function renderReviewTab(body, { id, result, review, report: r }) {
         </dl>
       </div>`;
   };
+  // One row of a bank line.
   const txnRow = (t) => `
       <div class="cmp-item">
         <div class="cmp-amt money ${t.direction === "CREDIT" ? "in" : "out"}${bad.has("AMOUNT_MISMATCH") ? " conflict" : ""}">${t.direction === "CREDIT" ? "" : "−"}${inr(t.amount)}</div>
@@ -1903,6 +2006,7 @@ function renderReviewTab(body, { id, result, review, report: r }) {
       </section>
     </div>`;
 
+  // Disables the buttons while an answer is being saved.
   const busy = (on) => $$("button, input, textarea", body).forEach((el) => { el.disabled = on; });
 
   $$('input[name="answer"]', body).forEach((radio) => radio.addEventListener("change", () => {
@@ -1964,6 +2068,7 @@ function renderReviewTab(body, { id, result, review, report: r }) {
   });
 }
 
+// A claimed date shown as a readable date, or as written when it cannot be read.
 function fmtClaimDate(v) {
   if (!v) return "Not stated";
   const m = String(v).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
@@ -1977,6 +2082,7 @@ function isPaidBill(report) {
   return claims.length > 0 && claims.every((c) => c.claim_type === "EXPENSE_INCURRED");
 }
 
+// The question shown at the top of a check (e.g. 'Did Pooja Plastics pay you only ₹20,000?') and its answer options.
 function reviewQuestion(status, { who, expected, matched, due, issues, hasBank, paidBill }) {
   const first = who === "this person" ? "they" : who.split(" ")[0];
   const later = { decision: "NEEDS_MORE_EVIDENCE", icon: "hourglass", tone: "gray", label: "Not sure yet, keep it open",
@@ -2110,6 +2216,7 @@ const APPROVAL = {
   EXECUTED: { label: "Done", tone: "green" },
 };
 
+// Follow-ups tab: ready-to-send reminder drafts for money still due.
 async function renderFollowupsTab(body, { id }) {
   body.innerHTML = `<div class="skeleton" style="height:180px"></div>`;
   const actions = await api(`/api/v1/cases/${encodeURIComponent(id)}/actions`);
@@ -2175,6 +2282,7 @@ async function renderFollowupsTab(body, { id }) {
   });
 }
 
+// One follow-up draft with copy and open buttons.
 function draftHtml(a) {
   const st = APPROVAL[a.approval_status] || { label: titleCase(a.approval_status), tone: "gray" };
   const meta = FOLLOWUPS.find((f) => f.type === a.action_type);
@@ -2182,6 +2290,7 @@ function draftHtml(a) {
   let content = "";
   if (a.notice_draft) {
     const n = a.notice_draft;
+    // Removes internal check ids from text shown to the user.
     const noId = (t) => String(t || "").replace(/\s*[—-]\s*Case\s+\S+/g, "").replace(/\s+for Case\s+\S+/g, "");
     content = `<div class="subj">${esc(noId(n.subject))}</div><pre id="draft-text-${esc(a.action_id)}">${esc(noId(n.subject))}\n\n${esc(noId(n.body))}</pre>`;
   } else if (a.journal_voucher) {
@@ -2229,6 +2338,7 @@ const EVENT_LABEL = {
   REVIEW_CLOSED: { label: "Closed", icon: "lock" },
 };
 
+// History tab: every answer and change, with a check that the tamper-evident chain is intact.
 async function renderHistoryTab(body, { id }) {
   body.innerHTML = `<div class="skeleton" style="height:180px"></div>`;
   const events = await api(`/api/v1/cases/${encodeURIComponent(id)}/review/audit`);
@@ -2312,6 +2422,7 @@ async function viewPeople(view) {
     </div>`;
 }
 
+// One person's page: all their checks and totals.
 async function viewPerson(view, name) {
   view.innerHTML = loadingState();
   const [people, checks] = await Promise.all([api("/api/v1/counterparties"), loadChecks(true)]);
@@ -2465,16 +2576,21 @@ const TOURS = {
 
 const tour = { name: null, steps: [], i: 0, layer: null, onResize: null };
 
+// Where 'tour seen' is remembered for this user in this browser.
 function tourKey(name) { return `verity.tour.${name}.${state.user?.id || "anon"}`; }
+// True when this user has already seen the tour.
 function tourSeen(name) { try { return localStorage.getItem(tourKey(name)) === "1"; } catch { return false; } }
+// Remembers that this user has seen the tour.
 function markTourSeen(name) { try { localStorage.setItem(tourKey(name), "1"); } catch { /* storage unavailable */ } }
 
+// Starts the guided tour the first time a user opens the home page or a check.
 function maybeStartTours(page, sub) {
   if (tour.name) return;
   if (!page && !tourSeen("main")) setTimeout(() => startTour("main"), 400);
   else if (page === "checks" && sub && !tourSeen("check") && tourSeen("main")) setTimeout(() => startTour("check"), 500);
 }
 
+// The on-screen element a tour step points at, if visible.
 function visibleTarget(name) {
   return $$(`[data-tour="${name}"]`).find((el) => {
     const r = el.getBoundingClientRect();
@@ -2482,6 +2598,7 @@ function visibleTarget(name) {
   });
 }
 
+// Starts a guided tour (force=true replays it).
 function startTour(name, force = false) {
   if (!force && tourSeen(name)) return;
   stopTour();
@@ -2506,6 +2623,7 @@ function startTour(name, force = false) {
   drawTourStep();
 }
 
+// Keyboard control for the tour: arrows to move, Escape to close.
 function tourKeys(e) {
   if (!tour.layer) return;
   if (e.key === "Escape") endTour();
@@ -2513,11 +2631,13 @@ function tourKeys(e) {
   else if (e.key === "ArrowLeft") { tour.i = Math.max(0, tour.i - 1); drawTourStep(); }
 }
 
+// Moves to the next tour step that has something visible to point at.
 function nextTourStep() {
   if (tour.i >= tour.steps.length - 1) endTour();
   else { tour.i++; drawTourStep(); }
 }
 
+// Draws the highlight and the explanation bubble for the current tour step.
 function drawTourStep() {
   if (!tour.layer) return;
   const step = tour.steps[tour.i];
@@ -2566,11 +2686,13 @@ function drawTourStep() {
   $("[data-tour-act=next], [data-tour-act=cta]", card)?.focus({ preventScroll: true });
 }
 
+// Finishes the tour and remembers it was seen.
 function endTour() {
   if (tour.name) markTourSeen(tour.name);
   stopTour();
 }
 
+// Removes the tour from the screen without marking it seen.
 function stopTour() {
   tour.layer?.remove();
   if (tour.onResize) window.removeEventListener("resize", tour.onResize);

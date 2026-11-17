@@ -26,6 +26,7 @@ _token_cache: Dict[str, Tuple[float, dict]] = {}
 
 
 def supabase_public_config() -> Dict[str, object]:
+    """The public Supabase URL and anon key the browser needs to show the sign-in screen."""
     url = os.getenv("SUPABASE_URL") or None
     key = os.getenv("SUPABASE_ANON_KEY") or None
     return {
@@ -37,20 +38,27 @@ def supabase_public_config() -> Dict[str, object]:
 
 
 def _is_production() -> bool:
+    """True when the server runs in production mode (then sign-in is always required)."""
     return os.getenv("VERITY_ENV", "development").lower() == "production"
 
 
 def auth_enabled() -> bool:
+    """True when Supabase sign-in is configured, so every API call must carry a valid token."""
     cfg = supabase_public_config()
     return bool(cfg["supabase_url"] and cfg["supabase_anon_key"])
 
 
 async def _verify_token(token: str) -> Optional[dict]:
+    """Checks a Supabase sign-in token with Supabase and returns the user record, or None when it is not valid."""
+    # Tokens are cached for 5 minutes (by their SHA-256, never in plain text) so each
+    # request does not need a round trip to Supabase.
     key = hashlib.sha256(token.encode()).hexdigest()
     cached = _token_cache.get(key)
     now = time.time()
     if cached and cached[0] > now:
         return cached[1]
+
+    # Ask Supabase who this token belongs to; any error means "not signed in".
 
     cfg = supabase_public_config()
     try:
@@ -66,6 +74,7 @@ async def _verify_token(token: str) -> Optional[dict]:
     user = r.json()
     if not user.get("id"):
         return None
+    # Keep the cache small: start again when it gets large.
     if len(_token_cache) > 5000:
         _token_cache.clear()
     _token_cache[key] = (now + TOKEN_CACHE_SECONDS, user)
@@ -76,13 +85,16 @@ class SupabaseAuthMiddleware:
     """Pure ASGI middleware so the user context propagates into sync endpoints."""
 
     def __init__(self, app) -> None:
+        """Wraps the app so every request passes through the sign-in check first."""
         self.app = app
 
     async def __call__(self, scope, receive, send) -> None:
+        """For each API request: applies rate limits, verifies the sign-in token and opens that user's private workspace."""
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
+        # Only /api/ calls need a user; the web page, its files and /health are public.
         path: str = scope.get("path", "")
         method: str = scope.get("method", "GET")
         needs_user = path.startswith("/api/") and path not in PUBLIC_API_PATHS and method != "OPTIONS"
@@ -91,19 +103,23 @@ class SupabaseAuthMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # 1. Rate limit per IP address, before any other work.
         ip = rl.client_ip(scope)
         wait = rl.limiter.hit(f"ip:{ip}", rl.IP_LIMIT)
         if wait:
             await _send_rate_limited(send, wait)
             return
 
+        # 2. Find the user. Without Supabase (local development) everyone is the local user.
         user_id = LOCAL_USER_ID
         if auth_enabled():
+            # The browser sends "Authorization: Bearer <token>".
             headers = dict(scope.get("headers") or [])
             auth = headers.get(b"authorization", b"").decode()
             token = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
             user = await _verify_token(token) if token and len(token) < 4096 else None
             if not user:
+                # Repeated bad tokens from one IP are rate limited separately.
                 wait = rl.limiter.hit(f"anon:{ip}", rl.UNAUTHENTICATED_LIMIT)
                 if wait:
                     await _send_rate_limited(send, wait)
@@ -120,12 +136,15 @@ class SupabaseAuthMiddleware:
             })
             return
 
+        # 3. Per-user limits (stricter for uploads, questions and other writes).
         for name, limit in [("user", rl.USER_LIMIT)] + rl.user_limits_for(path, method):
             wait = rl.limiter.hit(f"{name}:{user_id}", limit)
             if wait:
                 await _send_rate_limited(send, wait)
                 return
 
+        # 4. Run the request inside this user's private workspace, then save the workspace
+        #    after any change so it can be backed up.
         ctx_token = set_current_user(user_id)
         try:
             await self.app(scope, receive, send)
@@ -139,6 +158,7 @@ class SupabaseAuthMiddleware:
 
 
 async def _send_rate_limited(send, retry_after: int) -> None:
+    """Replies 429 'Too many requests' with a Retry-After header."""
     minutes = (retry_after + 59) // 60
     wait_text = f"{retry_after} seconds" if retry_after < 90 else f"{minutes} minutes"
     await _send_json(send, 429, {
@@ -147,6 +167,7 @@ async def _send_rate_limited(send, retry_after: int) -> None:
 
 
 async def _send_json(send, status: int, body: dict, extra_headers=None) -> None:
+    """Sends a small JSON reply directly from the middleware (used for sign-in and rate-limit errors)."""
     data = json.dumps(body).encode()
     await send({
         "type": "http.response.start",

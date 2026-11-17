@@ -1,4 +1,4 @@
-"""Central configuration management for VERITY.
+"""Central configuration management for FinSync.
 
 Provides typed, environment-driven configuration with safe defaults for production
 and local demonstration environments.
@@ -120,7 +120,7 @@ class Settings(BaseModel):
         description="Relative or absolute path to the ground-truth benchmark JSON"
     )
 
-    # AI Extraction Provider (Day 17)
+    # Optional AI reader settings. Switched off: FinSync does not use any AI model (provider stays MOCK).
     ai_provider_type: str = Field(
         default_factory=lambda: os.getenv("VERITY_AI_PROVIDER", "MOCK"),
         description="AI extraction provider type: MOCK, GEMINI, OPENAI_COMPATIBLE"

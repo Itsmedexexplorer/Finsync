@@ -1,4 +1,4 @@
-"""Deterministic Text and Multilingual Claim Extractor for VERITY.
+"""Deterministic Text and Multilingual Claim Extractor for FinSync.
 
 Extracts financial assertions, Indian currency amounts, payment rails, and reference IDs
 from natural language messages, WhatsApp exports, and multilingual text.
@@ -24,9 +24,11 @@ class TextClaimExtractor(BaseExtractor):
 
     @property
     def provider_name(self) -> str:
+        """Short name of this reader; it is recorded on every claim it makes, so each result can be traced to its rule."""
         return "deterministic_text"
 
     def can_extract(self, evidence: Evidence) -> bool:
+        """True when this reader handles this kind of evidence."""
         return evidence.modality in (
             EvidenceModality.MESSAGING_CHAT,
             EvidenceModality.RECEIPT,
@@ -79,6 +81,7 @@ class TextClaimExtractor(BaseExtractor):
         evidence: Evidence,
         context: Optional[Dict[str, Any]] = None,
     ) -> ExtractionResult:
+        """Reads a message, invoice text or OCR text and returns the payment claim in it: amount, reference, date, party, payment method and claim type."""
         raw_text = evidence.raw_payload.strip()
         if not raw_text:
             return ExtractionResult.create_failure(

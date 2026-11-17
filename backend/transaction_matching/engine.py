@@ -1,4 +1,4 @@
-"""Deterministic Transaction Matching Engine for VERITY.
+"""Deterministic Transaction Matching Engine for FinSync.
 
 Pairs financial claims and verified ledger transactions across 1:1, 1:N, N:1, Partial,
 and Ambiguous topologies with strict False-Match prevention.
@@ -26,6 +26,7 @@ class TransactionMatcher:
     """Core deterministic transaction matching engine."""
 
     def __init__(self, config: Optional[MatchConfig] = None) -> None:
+        """Creates the matcher with its weights and thresholds."""
         self.config = config or MatchConfig()
 
     def match(
@@ -50,11 +51,13 @@ class TransactionMatcher:
         # A claim whose reference (UTR / UPI ID) is in the statement belongs to that line only;
         # it must never be paired with a different line just because the amount is the same.
         def _ref(x: Optional[str]) -> str:
+            """A reference in comparable form: upper case, letters and digits only."""
             return "".join(ch for ch in (x or "").upper() if ch.isalnum())
 
         bank_refs = {_ref(t.bank_reference) for t in transactions} - {""}
 
         def points_elsewhere(c: Claim, t: Transaction) -> bool:
+            """True when the claim's reference is in the statement but on a different line, so this line must not be matched to it."""
             cr = _ref(c.reference_id_hint)
             return bool(cr) and cr in bank_refs and _ref(t.bank_reference) != cr
 

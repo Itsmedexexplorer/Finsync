@@ -1,4 +1,4 @@
-"""VERITY Unified Storage Service & Transaction Coordinator (Day 16).
+"""FinSync Unified Storage Service & Transaction Coordinator.
 
 Coordinates multi-domain SQL repositories, manages atomic case lifecycle transactions,
 preserves deterministic financial truth, enforces zero evidence mutation, and provides
@@ -60,6 +60,7 @@ logger = logging.getLogger("verity.storage.service")
 
 
 def _get_val(obj: Any, key: str, default: Any = None) -> Any:
+    """Reads a field from either an object or a dictionary."""
     if isinstance(obj, dict):
         val = obj.get(key, default)
         return default if val is None else val
@@ -76,6 +77,7 @@ class StorageService:
     """Unified service for durable persistence, atomic transactions, and audit integrity."""
 
     def __init__(self, engine: Optional[DatabaseEngine] = None) -> None:
+        """Creates the storage service on top of the database engine."""
         self.engine = engine or get_database_engine()
         self.audit_store = PersistentAuditStore(self.engine)
 

@@ -1,11 +1,11 @@
-"""Cross-Case Intelligence & Counterparty Memory Service (Day 18).
+"""Cross-Case Intelligence & Counterparty Memory Service.
 
 Provides deterministic historical intelligence across financial cases:
 - Counterparty lifetime history & exposure tracking
 - Reference / UTR reuse detection
 - Recurring discrepancy pattern identification
 - Deterministic cross-case relationship correlation
-- Historical risk signals for the AI Finance Controller
+- Historical risk signals for the finance controller (fixed rules)
 
 Strict Invariants:
 1. All signals, correlations, and metrics are derived 100% deterministically from SQL records.
@@ -52,6 +52,7 @@ class CrossCaseIntelligenceService:
     """Deterministic intelligence service for cross-case correlation and counterparty memory."""
 
     def __init__(self, engine: Optional[DatabaseEngine] = None) -> None:
+        """Creates the service that compares a check with the user's earlier checks."""
         self.engine = engine or get_database_engine()
 
     # ------------------------------------------------------------------
@@ -82,6 +83,7 @@ class CrossCaseIntelligenceService:
         exclude_case_id: Optional[str],
         conn: DatabaseConnection,
     ) -> Optional[CounterpartyHistory]:
+        """Earlier checks with the same person or business, with their totals and statuses."""
         entity_repo = SQLEntityRepository(conn)
         recon_repo = SQLReconciliationRepository(conn)
         disc_repo = SQLDiscrepancyRepository(conn)
@@ -242,6 +244,7 @@ class CrossCaseIntelligenceService:
         current_case_id: Optional[str],
         conn: DatabaseConnection,
     ) -> ReferenceCorrelation:
+        """Earlier checks that used the same payment reference (a reference reused across checks is suspicious)."""
         txn_repo = SQLTransactionRepository(conn)
         claim_repo = SQLClaimRepository(conn)
 
@@ -316,6 +319,7 @@ class CrossCaseIntelligenceService:
         current_case_id: Optional[str],
         conn: DatabaseConnection,
     ) -> List[RecurringDiscrepancyPattern]:
+        """Problems that keep repeating for the same person (for example amounts that never match)."""
         disc_repo = SQLDiscrepancyRepository(conn)
         recon_repo = SQLReconciliationRepository(conn)
 
@@ -396,6 +400,7 @@ class CrossCaseIntelligenceService:
         case_id: str,
         conn: DatabaseConnection,
     ) -> List[CrossCaseCorrelation]:
+        """Other checks linked to this one through shared people, references or amounts."""
         entity_repo = SQLEntityRepository(conn)
         txn_repo = SQLTransactionRepository(conn)
         claim_repo = SQLClaimRepository(conn)
@@ -523,6 +528,7 @@ class CrossCaseIntelligenceService:
         case_id: str,
         conn: DatabaseConnection,
     ) -> List[HistoricalRiskSignal]:
+        """Warning signs from the user's history that affect this check (repeat duplicates, repeat shortfalls)."""
         entity_repo = SQLEntityRepository(conn)
         txn_repo = SQLTransactionRepository(conn)
         claim_repo = SQLClaimRepository(conn)
@@ -643,6 +649,7 @@ class CrossCaseIntelligenceService:
         case_id: str,
         conn: DatabaseConnection,
     ) -> CaseIntelligenceProfile:
+        """Everything the history says about one check, in one profile."""
         entity_repo = SQLEntityRepository(conn)
         txn_repo = SQLTransactionRepository(conn)
         claim_repo = SQLClaimRepository(conn)

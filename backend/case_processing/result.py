@@ -1,4 +1,4 @@
-"""Final Result model for VERITY Case Processing Pipeline."""
+"""Final Result model for FinSync Case Processing Pipeline."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from backend.reporting.models import FinancialTruthReport
 
 
 class CaseProcessingResult(BaseModel):
-    """The unified final output produced by the VERITY Finance Controller Pipeline."""
+    """The unified final output produced by the FinSync Finance Controller Pipeline."""
     case_id: str = Field(..., description="Unique case identifier")
     status: str = Field(..., description="Synthesized financial status (CONFIRMED, PARTIALLY_SETTLED, etc.)")
     confidence_score: float = Field(..., ge=0.0, le=1.0, description="Overall confidence score (0.0 to 1.0)")

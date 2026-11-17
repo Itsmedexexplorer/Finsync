@@ -1,4 +1,4 @@
-"""Deterministic Financial Reconciliation Rule Engine for VERITY."""
+"""Deterministic Financial Reconciliation Rule Engine for FinSync."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ class ReconciliationRuleEngine:
 
         # -----------------------------------------------------------------
         # Priority 1: Contradiction Dominance (RULE_RECON_004)
-        # Material Day 7 contradictions strictly prevent CONFIRMED status
+        # Material contradictions strictly prevent CONFIRMED status
         # -----------------------------------------------------------------
         material_discs = [
             d for d in discs

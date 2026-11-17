@@ -1,4 +1,4 @@
-"""VERITY AI Finance Controller Intelligence Subsystem."""
+"""FinSync finance controller: priorities, next actions and answers to questions, all from fixed rules."""
 
 from backend.controller.ai_explainer import AIExplainer, validate_ai_output
 from backend.controller.context import build_controller_ai_context

@@ -1,4 +1,4 @@
-"""VERITY Storage & Persistent Data Layer Subsystem (Day 16)."""
+"""FinSync Storage & Persistent Data Layer Subsystem."""
 
 from backend.storage.audit_store import AuditChainCorruptedError, PersistentAuditStore
 from backend.storage.config import StorageSettings, get_storage_settings

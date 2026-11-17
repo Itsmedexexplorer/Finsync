@@ -1,4 +1,4 @@
-"""Fact Grounding and Double-Entry Invariant Validators (Day 19).
+"""Fact Grounding and Double-Entry Invariant Validators.
 
 Strict Invariants:
 1. Zero Hallucinated Numbers: Draft notices cannot cite amounts not present in ReconciliationResult.
@@ -84,6 +84,7 @@ class RemediationValidator:
                             pass
 
         def _is_grounded_amount(val: Optional[float]) -> bool:
+            """True when an amount in a drafted message really appears in the check's records (nothing made up)."""
             if val is None:
                 return True
             r_val = round(val, 2)

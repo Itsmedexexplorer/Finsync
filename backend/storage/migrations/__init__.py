@@ -1,4 +1,4 @@
-"""VERITY Database Migration Runner."""
+"""FinSync Database Migration Runner."""
 
 from __future__ import annotations
 

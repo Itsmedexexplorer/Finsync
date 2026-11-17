@@ -1,4 +1,4 @@
-"""VERITY Proactive Remediation & Actions Subsystem (Day 19)."""
+"""FinSync Proactive Remediation & Actions Subsystem."""
 
 from backend.controller.remediation.models import (
     ActionApprovalStatus,

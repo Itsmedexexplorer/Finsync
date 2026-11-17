@@ -1,4 +1,4 @@
-"""Contradiction Detection subsystem for VERITY."""
+"""Contradiction Detection subsystem for FinSync."""
 
 from backend.contradiction_detection.base import BaseContradictionDetector
 from backend.contradiction_detection.config import ContradictionConfig

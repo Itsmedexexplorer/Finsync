@@ -17,6 +17,7 @@ class SQLReviewRepository(ReviewRepository):
     """SQLite/SQL repository for Human Review workspace state."""
 
     def create(self, record: ReviewRecordModel) -> ReviewRecordModel:
+        """Saves one review (the user's answer) using SQL."""
         sql = """
         INSERT INTO reviews (
             review_id, case_id, status, decision, assigned_to,
@@ -55,9 +56,11 @@ class SQLReviewRepository(ReviewRepository):
         return record
 
     def update(self, record: ReviewRecordModel) -> ReviewRecordModel:
+        """Saves changes to an existing review (the user's answer)."""
         return self.create(record)
 
     def get_by_case(self, case_id: str) -> Optional[ReviewRecordModel]:
+        """The review (the user's answer) saved for one check using SQL."""
         sql = "SELECT * FROM reviews WHERE case_id = ?;"
         cursor = self.conn.execute(sql, (case_id,))
         row = cursor.fetchone()
@@ -66,6 +69,7 @@ class SQLReviewRepository(ReviewRepository):
         return self._row_to_record(row)
 
     def add_note(self, note: ReviewNoteRecord) -> ReviewNoteRecord:
+        """Saves a note the user wrote on a check."""
         sql = """
         INSERT INTO review_notes (
             note_id, case_id, review_id, author_id, author_name, note_type, content, timestamp
@@ -88,6 +92,7 @@ class SQLReviewRepository(ReviewRepository):
         return note
 
     def list_notes(self, case_id: str) -> List[ReviewNoteRecord]:
+        """Every note on one check, oldest first."""
         sql = "SELECT * FROM review_notes WHERE case_id = ? ORDER BY timestamp ASC;"
         cursor = self.conn.execute(sql, (case_id,))
         return [
@@ -105,6 +110,7 @@ class SQLReviewRepository(ReviewRepository):
         ]
 
     def add_inspection(self, inspection: EvidenceReviewRecordModel) -> EvidenceReviewRecordModel:
+        """Records that the user looked at one piece of evidence."""
         sql = """
         INSERT INTO evidence_inspections (
             inspection_id, case_id, review_id, evidence_id, reviewer_id, verified, notes, timestamp
@@ -127,6 +133,7 @@ class SQLReviewRepository(ReviewRepository):
         return inspection
 
     def list_inspections(self, case_id: str) -> List[EvidenceReviewRecordModel]:
+        """Every evidence inspection recorded for one check."""
         sql = "SELECT * FROM evidence_inspections WHERE case_id = ? ORDER BY timestamp ASC;"
         cursor = self.conn.execute(sql, (case_id,))
         return [
@@ -144,6 +151,7 @@ class SQLReviewRepository(ReviewRepository):
         ]
 
     def _row_to_record(self, row: dict) -> ReviewRecordModel:
+        """Turns one database row into a review (the user's answer) object."""
         return ReviewRecordModel(
             review_id=row["review_id"],
             case_id=row["case_id"],

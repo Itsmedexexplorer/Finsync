@@ -1,4 +1,4 @@
-"""VERITY Database Engine & Connection Pool Manager (Day 16).
+"""FinSync Database Engine & Connection Pool Manager.
 
 Provides thread-safe connection pooling, explicit transaction boundaries,
 nested savepoints, connection cleanup, health checks, and lifecycle helpers.
@@ -25,6 +25,7 @@ class DatabaseConnection:
     """Thread-safe wrapper around a raw database connection with helper execution methods."""
 
     def __init__(self, raw_conn: sqlite3.Connection, engine: "DatabaseEngine", in_memory: bool = False) -> None:
+        """Wraps a raw SQLite connection."""
         self.raw = raw_conn
         self.engine = engine
         self.in_memory = in_memory
@@ -67,6 +68,7 @@ class DatabaseEngine:
     """Thread-safe database engine supporting connection pooling and atomic transactions."""
 
     def __init__(self, settings: Optional[StorageSettings] = None) -> None:
+        """Creates the SQLite engine from the settings (file path or in-memory)."""
         self.settings = settings or get_storage_settings()
         self._pool: queue.Queue[DatabaseConnection] = queue.Queue(maxsize=self.settings.pool_size + self.settings.max_overflow)
         self._all_connections: list[DatabaseConnection] = []

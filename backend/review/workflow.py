@@ -9,6 +9,7 @@ from backend.review.models import ReviewStatus
 class InvalidStateTransitionError(ValueError):
     """Raised when an illegal review workflow state transition is attempted."""
     def __init__(self, current: ReviewStatus, target: ReviewStatus, message: str = ""):
+        """Raised when a review is moved to a state it cannot reach from its current state."""
         msg = message or f"Illegal review transition from '{current.value}' to '{target.value}'."
         super().__init__(msg)
         self.current = current

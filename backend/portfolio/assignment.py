@@ -1,4 +1,4 @@
-"""VERITY Case Assignment & Workload Service (Day 15).
+"""FinSync Case Assignment & Workload Service.
 
 Manages reviewer assignments, reassignments, unassignments, workload calculations,
 and reviewer overload alerts.
@@ -33,6 +33,7 @@ class PortfolioAssignmentService:
     """Thread-safe assignment and reviewer workload tracking service."""
 
     def __init__(self) -> None:
+        """Starts with no checks assigned to anyone."""
         self._lock = threading.Lock()
         # case_id -> CaseAssignment
         self._assignments: Dict[str, CaseAssignment] = {}

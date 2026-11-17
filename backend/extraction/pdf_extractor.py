@@ -1,4 +1,4 @@
-"""PDF Document Claims Extractor for VERITY.
+"""PDF Document Claims Extractor for FinSync.
 
 Extracts structured financial claims from text-based PDF invoices and receipts.
 Accurately identifies scanned documents and signals REQUIRES_VISION_OR_OCR rather than hallucinating.
@@ -22,9 +22,11 @@ class PDFDocumentExtractor(BaseExtractor):
 
     @property
     def provider_name(self) -> str:
+        """Short name of this reader; it is recorded on every claim it makes, so each result can be traced to its rule."""
         return "deterministic_pdf"
 
     def can_extract(self, evidence: Evidence) -> bool:
+        """True when this reader handles this kind of evidence."""
         return (
             evidence.modality in (EvidenceModality.INVOICE, EvidenceModality.RECEIPT)
             or evidence.source_name.lower().endswith(".pdf")
@@ -36,6 +38,7 @@ class PDFDocumentExtractor(BaseExtractor):
         context: Optional[Dict[str, Any]] = None,
     ) -> ExtractionResult:
         # Check if PDF was flagged as scanned / image-only during ingestion
+        """Reads an invoice or receipt PDF: total amount, invoice number, UTR, issuer and client, and whether money is owed to the user or was paid by the user."""
         if evidence.metadata.get("is_scanned") is True:
             return ExtractionResult.create_failure(
                 evidence_id=evidence.id,

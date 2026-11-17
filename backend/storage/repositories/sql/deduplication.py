@@ -13,6 +13,7 @@ class SQLDeduplicationRepository(DeduplicationRepository):
     """SQLite/SQL repository for Deduplication Group records."""
 
     def create(self, record: DeduplicationGroupRecord) -> DeduplicationGroupRecord:
+        """Saves one duplicate group using SQL."""
         sql = """
         INSERT INTO deduplication_groups (
             id, case_id, group_type, member_evidence_ids, member_claim_ids,
@@ -43,16 +44,19 @@ class SQLDeduplicationRepository(DeduplicationRepository):
         return record
 
     def create_batch(self, records: List[DeduplicationGroupRecord]) -> List[DeduplicationGroupRecord]:
+        """Saves many duplicate group records in one go using SQL."""
         for r in records:
             self.create(r)
         return records
 
     def list_by_case(self, case_id: str) -> List[DeduplicationGroupRecord]:
+        """Every duplicate group that belongs to one check using SQL."""
         sql = "SELECT * FROM deduplication_groups WHERE case_id = ? ORDER BY created_at ASC;"
         cursor = self.conn.execute(sql, (case_id,))
         return [self._row_to_record(r) for r in cursor.fetchall()]
 
     def _row_to_record(self, row: dict) -> DeduplicationGroupRecord:
+        """Turns one database row into a duplicate group object."""
         return DeduplicationGroupRecord(
             id=row["id"],
             case_id=row["case_id"],

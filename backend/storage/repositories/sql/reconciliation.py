@@ -13,6 +13,7 @@ class SQLReconciliationRepository(ReconciliationRepository):
     """SQLite/SQL repository for Reconciliation Result records."""
 
     def create(self, record: ReconciliationRecordModel) -> ReconciliationRecordModel:
+        """Saves one check result using SQL."""
         sql = """
         INSERT INTO reconciliation_results (
             reconciliation_id, case_id, status, event_id, entity_id,
@@ -70,6 +71,7 @@ class SQLReconciliationRepository(ReconciliationRepository):
         return record
 
     def get_by_case(self, case_id: str) -> Optional[ReconciliationRecordModel]:
+        """The result saved for one check using SQL."""
         sql = "SELECT * FROM reconciliation_results WHERE case_id = ?;"
         cursor = self.conn.execute(sql, (case_id,))
         row = cursor.fetchone()
@@ -87,6 +89,7 @@ class SQLReconciliationRepository(ReconciliationRepository):
         return [self._row_to_record(r) for r in cursor.fetchall()]
 
     def _row_to_record(self, row: dict) -> ReconciliationRecordModel:
+        """Turns one database row into a check-result object."""
         return ReconciliationRecordModel(
             reconciliation_id=row["reconciliation_id"],
             case_id=row["case_id"],

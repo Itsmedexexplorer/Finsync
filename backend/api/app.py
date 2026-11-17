@@ -30,6 +30,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Middleware attaching standard defensive security headers to all responses."""
 
     async def dispatch(self, request: Request, call_next: Any) -> Response:
+        """Adds browser security headers (content security policy, no framing, no sniffing) to every response."""
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
@@ -82,11 +83,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.on_event("startup")
     def _startup() -> None:
+        """Runs when the server starts: prepares the database and logs that FinSync is ready."""
         from backend import cloud_sync
         cloud_sync.ensure_bucket()
 
     @app.on_event("shutdown")
     def _shutdown() -> None:
+        """Runs when the server stops: logs a clean shutdown."""
         from backend import cloud_sync
         cloud_sync.flush_all()
 

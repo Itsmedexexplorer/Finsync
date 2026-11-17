@@ -1,4 +1,4 @@
-"""Pydantic API Request and Response models for the VERITY Finance Controller API."""
+"""Pydantic API Request and Response models for the FinSync Finance Controller API."""
 
 from __future__ import annotations
 
@@ -104,7 +104,7 @@ class InfoResponse(BaseModel):
         "CASH_VOUCHER",
     ]
     safety_guarantees: List[str] = [
-        "Zero LLM hallucination in financial math",
+        "No AI model: every amount comes from fixed rules and the bank statement",
         "Deterministic Indian entity resolution (GSTIN, PAN, UPI, Phone)",
         "Strict uncertainty preservation (AMBIGUOUS, CONTRADICTED never falsely confirmed)",
         "Immutable SHA-256 Provenance DAG trace",
@@ -162,7 +162,7 @@ class DemoCaseSummaryResponse(BaseModel):
 
 
 class CaseResponse(BaseModel):
-    """Unified Case Processing API response matching the Day 11 contract."""
+    """Unified Case Processing API response matching the contract."""
     case_id: str
     status: str
     confidence: float

@@ -1,4 +1,4 @@
-"""Structured logging and Request-ID propagation for the VERITY API."""
+"""Structured logging and Request-ID propagation for the FinSync API."""
 
 from __future__ import annotations
 
@@ -40,6 +40,7 @@ class RequestIDAndLoggingMiddleware(BaseHTTPMiddleware):
     """Middleware for Request-ID generation, propagation, and structured request logging."""
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
+        """Gives every request an id and logs its method, path, status and time taken."""
         start_time = time.perf_counter()
 
         # 1. Extract or generate Request ID

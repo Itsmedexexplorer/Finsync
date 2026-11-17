@@ -1,4 +1,4 @@
-"""VERITY Portfolio Prioritization Engine (Day 15).
+"""FinSync Portfolio Prioritization Engine.
 
 Calculates a deterministic PortfolioPriorityScore that combines Controller risk,
 deterministic contradiction severity, human review requirements, SLA urgency,

@@ -27,6 +27,7 @@ _current_user_id: ContextVar[str] = ContextVar("verity_user_id", default=LOCAL_U
 
 
 def workspace_root() -> Path:
+    """The folder that holds every user's workspace (VERITY_WORKSPACE_DIR, default data/workspaces)."""
     return Path(os.getenv("VERITY_WORKSPACE_DIR", "data/workspaces"))
 
 
@@ -42,6 +43,7 @@ class Workspace:
     """All stateful services belonging to one user."""
 
     def __init__(self, user_id: str) -> None:
+        """Opens (or creates) one user's private workspace: their own SQLite database and review state."""
         from backend.api.dependencies import PersistentCaseStore
         from backend.controller.remediation.service import RemediationActionService
         from backend.controller.service import ControllerService
@@ -56,14 +58,18 @@ class Workspace:
         self.lock = threading.RLock()
 
         if user_id == LOCAL_USER_ID:
+            # Local mode (no sign-in configured): use the one database from VERITY_DATABASE_URL.
             self.dir: Optional[Path] = None
             self.engine = get_database_engine()
             self.storage = get_storage_service()
         else:
+            # Signed-in user: a folder of their own with a private SQLite database.
             self.dir = workspace_root() / _safe_user_dir(user_id)
             self.dir.mkdir(parents=True, exist_ok=True)
             from backend import cloud_sync
 
+            # Free hosting can wipe the disk on restart, so the backup in Supabase Storage
+            # is downloaded first when the folder is empty.
             cloud_sync.restore_workspace(user_id, self.dir)
             settings = StorageSettings(database_url=f"sqlite:///{self.db_path}")
             self.engine = DatabaseEngine(settings)
@@ -72,6 +78,7 @@ class Workspace:
 
         from backend.case_processing.service import CaseProcessingService
 
+        # The services every page of the app uses, all bound to this user's database.
         self.case_service = CaseProcessingService()
         self.case_store = PersistentCaseStore(self.storage)
         self.controller = ControllerService()
@@ -83,11 +90,13 @@ class Workspace:
 
     @property
     def db_path(self) -> Path:
+        """Path of this user's SQLite database file."""
         assert self.dir is not None
         return self.dir / "verity.db"
 
     @property
     def review_state_path(self) -> Optional[Path]:
+        """Path of this user's saved review answers."""
         if self.dir:
             return self.dir / "reviews.json"
         # Local mode: keep review state next to the local database file.
@@ -96,6 +105,7 @@ class Workspace:
         return Path(self.engine.db_path).parent / "reviews.json"
 
     def _load_review_state(self) -> None:
+        """Loads the user's saved review answers and audit trail from disk."""
         path = self.review_state_path
         if path and path.exists():
             try:
@@ -110,6 +120,7 @@ class Workspace:
             return
         path.parent.mkdir(parents=True, exist_ok=True)
         with self.lock:
+            # Write to a temporary file first, then swap it in, so a crash never leaves half a file.
             tmp = path.with_suffix(".tmp")
             tmp.write_text(json.dumps(self.review.export_state()), encoding="utf-8")
             tmp.replace(path)
@@ -123,6 +134,7 @@ _registry_lock = threading.Lock()
 
 
 def get_workspace(user_id: Optional[str] = None) -> Workspace:
+    """The workspace of the given user (or of the user of the current request)."""
     uid = user_id or _current_user_id.get()
     with _registry_lock:
         ws = _workspaces.get(uid)
@@ -133,13 +145,16 @@ def get_workspace(user_id: Optional[str] = None) -> Workspace:
 
 
 def set_current_user(user_id: str):
+    """Remembers which user the current request belongs to."""
     return _current_user_id.set(user_id)
 
 
 def reset_current_user(token) -> None:
+    """Forgets the current request's user when the request ends."""
     _current_user_id.reset(token)
 
 
 def all_workspaces() -> list[Workspace]:
+    """Every workspace opened since the server started."""
     with _registry_lock:
         return list(_workspaces.values())

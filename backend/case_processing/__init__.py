@@ -1,4 +1,4 @@
-"""Case Processing and End-to-End Orchestration subsystem for VERITY."""
+"""Case Processing and End-to-End Orchestration subsystem for FinSync."""
 
 from backend.case_processing.context import CaseProcessingContext
 from backend.case_processing.models import CaseInput, PipelineStage, StageExecutionRecord

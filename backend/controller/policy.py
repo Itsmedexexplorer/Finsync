@@ -1,4 +1,4 @@
-"""Deterministic Controller Policy Engine for VERITY.
+"""Deterministic Controller Policy Engine for FinSync.
 
 Enforces deterministic risk classification and action verdicts based strictly on
 signals derived from the financial reconciliation pipeline.

@@ -1,4 +1,4 @@
-"""Deterministic Contradiction Rules for VERITY.
+"""Deterministic Contradiction Rules for FinSync.
 
 Evaluates explicit financial disagreements while preventing false positives.
 """

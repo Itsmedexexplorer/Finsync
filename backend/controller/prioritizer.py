@@ -1,4 +1,4 @@
-"""Action Prioritization for the VERITY AI Finance Controller."""
+"""Action Prioritization for the FinSync finance controller (fixed rules)."""
 
 from __future__ import annotations
 

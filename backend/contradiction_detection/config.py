@@ -1,4 +1,4 @@
-"""Configuration for VERITY Contradiction Detection Subsystem."""
+"""Configuration for FinSync Contradiction Detection Subsystem."""
 
 from __future__ import annotations
 

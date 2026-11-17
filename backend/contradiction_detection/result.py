@@ -1,4 +1,4 @@
-"""Result models for VERITY Contradiction Detection Subsystem."""
+"""Result models for FinSync Contradiction Detection Subsystem."""
 
 from __future__ import annotations
 

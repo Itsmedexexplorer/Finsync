@@ -1,4 +1,4 @@
-"""Reconciliation subsystem for VERITY."""
+"""Reconciliation subsystem for FinSync."""
 
 from backend.reconciliation.base import BaseReconciler
 from backend.reconciliation.confidence import ConfidenceCalculator

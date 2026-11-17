@@ -37,23 +37,23 @@ class CaseProcessingContext(BaseModel):
     transactions: List[Transaction] = Field(default_factory=list, description="Verified Transaction records")
     
     # Transaction Matching
-    matching_result: Optional[TransactionMatchingResult] = Field(default=None, description="Day 5 matching result")
+    matching_result: Optional[TransactionMatchingResult] = Field(default=None, description="matching result")
     match_relationships: List[MatchRelationship] = Field(default_factory=list, description="Topological match links")
     
     # Deduplication
-    deduplication_result: Optional[DeduplicationResult] = Field(default=None, description="Day 6 deduplication result")
+    deduplication_result: Optional[DeduplicationResult] = Field(default=None, description="deduplication result")
     deduplication_groups: List[DeduplicationGroup] = Field(default_factory=list, description="Canonical event groups")
     
     # Contradiction Detection
-    contradiction_result: Optional[ContradictionResult] = Field(default=None, description="Day 7 contradiction result")
+    contradiction_result: Optional[ContradictionResult] = Field(default=None, description="contradiction result")
     discrepancies: List[Discrepancy] = Field(default_factory=list, description="Detected financial discrepancies")
     
     # Reconciliation
-    reconciliation_result: Optional[BatchReconciliationResult] = Field(default=None, description="Day 8 batch reconciliation")
+    reconciliation_result: Optional[BatchReconciliationResult] = Field(default=None, description="batch reconciliation")
     primary_reconciliation: Optional[ReconciliationResult] = Field(default=None, description="Primary event reconciliation")
     
     # Reporting & Explainability
-    reports: List[FinancialTruthReport] = Field(default_factory=list, description="Day 9 financial truth reports")
+    reports: List[FinancialTruthReport] = Field(default_factory=list, description="financial truth reports")
     primary_report: Optional[FinancialTruthReport] = Field(default=None, description="Primary case report")
     
     # Execution Tracking

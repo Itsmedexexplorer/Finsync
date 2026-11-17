@@ -1,4 +1,4 @@
-"""Canonical Domain Models for VERITY — Financial Truth, Reconstructed.
+"""Canonical Domain Models for FinSync — Financial Truth, Reconstructed.
 
 Core Principle: Evidence != Claim != Conclusion.
 """

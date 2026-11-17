@@ -18,6 +18,7 @@ class ProvenanceTracker:
     """Manages the lifecycle of the reconciliation provenance DAG."""
 
     def __init__(self, audit_trail: Optional[AuditTrail] = None) -> None:
+        """Creates the tracker that records which file each claim, match and result came from."""
         self.audit_trail = audit_trail or AuditTrail()
 
     def track_evidence(self, evidence: Evidence) -> ProvenanceNode:

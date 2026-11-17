@@ -1,4 +1,4 @@
-"""Domain models for Cross-Case Intelligence & Counterparty Memory (Day 18).
+"""Domain models for Cross-Case Intelligence & Counterparty Memory.
 
 Provides strongly typed Pydantic models for historical counterparty profiles,
 reference/UTR reuse correlations, recurring discrepancy patterns, and

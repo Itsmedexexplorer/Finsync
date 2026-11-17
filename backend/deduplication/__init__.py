@@ -1,4 +1,4 @@
-"""Deduplication subsystem for VERITY."""
+"""Deduplication subsystem for FinSync."""
 
 from backend.deduplication.base import BaseDeduplicator, DuplicateGroup
 from backend.deduplication.config import DeduplicationConfig

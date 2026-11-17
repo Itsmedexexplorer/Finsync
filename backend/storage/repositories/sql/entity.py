@@ -13,6 +13,7 @@ class SQLEntityRepository(EntityRepository):
     """SQLite/SQL repository for Entity records."""
 
     def create(self, record: EntityRecord) -> EntityRecord:
+        """Saves one person or business using SQL."""
         sql = """
         INSERT INTO entities (
             id, case_id, canonical_name, entity_type, gstin, pan, upi_id,
@@ -51,11 +52,13 @@ class SQLEntityRepository(EntityRepository):
         return record
 
     def create_batch(self, records: List[EntityRecord]) -> List[EntityRecord]:
+        """Saves many person or business records in one go using SQL."""
         for r in records:
             self.create(r)
         return records
 
     def get(self, entity_id: str, case_id: Optional[str] = None) -> Optional[EntityRecord]:
+        """Loads one person or business by its id using SQL; None when not found."""
         if case_id:
             sql = "SELECT * FROM entities WHERE id = ? AND case_id = ?;"
             cursor = self.conn.execute(sql, (entity_id, case_id))
@@ -68,6 +71,7 @@ class SQLEntityRepository(EntityRepository):
         return self._row_to_record(row)
 
     def list_by_case(self, case_id: str) -> List[EntityRecord]:
+        """Every person or business that belongs to one check using SQL."""
         sql = "SELECT * FROM entities WHERE case_id = ? ORDER BY created_at ASC;"
         cursor = self.conn.execute(sql, (case_id,))
         return [self._row_to_record(r) for r in cursor.fetchall()]
@@ -121,6 +125,7 @@ class SQLEntityRepository(EntityRepository):
         return results
 
     def _row_to_record(self, row: dict) -> EntityRecord:
+        """Turns one database row into a person or business object."""
         return EntityRecord(
             id=row["id"],
             case_id=row["case_id"],

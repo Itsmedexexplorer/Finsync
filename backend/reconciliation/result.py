@@ -1,4 +1,4 @@
-"""Result models for VERITY Financial Reconciliation Subsystem."""
+"""Result models for FinSync Financial Reconciliation Subsystem."""
 
 from __future__ import annotations
 
@@ -36,8 +36,8 @@ class ReconciliationResult(BaseModel):
 
     # Pipeline references
     discrepancy_ids: List[str] = Field(default_factory=list, description="Linked Discrepancy IDs")
-    match_relationship_ids: List[str] = Field(default_factory=list, description="Linked Day 5 Match IDs")
-    deduplication_group_ids: List[str] = Field(default_factory=list, description="Linked Day 6 Group IDs")
+    match_relationship_ids: List[str] = Field(default_factory=list, description="Linked Match IDs")
+    deduplication_group_ids: List[str] = Field(default_factory=list, description="Linked Group IDs")
 
     # Justification
     explanation: str = Field(..., description="Clear human-readable justification of the financial conclusion")

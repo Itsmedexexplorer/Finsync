@@ -1,4 +1,4 @@
-"""Deterministic Double-Entry Draft Journal Voucher Engine (Day 19).
+"""Deterministic Double-Entry Draft Journal Voucher Engine.
 
 Strict Accounting Invariants:
 1. TOTAL DEBITS == TOTAL CREDITS: Enforced mathematically on every generated voucher.

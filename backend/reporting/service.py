@@ -1,4 +1,4 @@
-"""Reporting Service for VERITY Financial Truth Reports."""
+"""Reporting Service for FinSync Financial Truth Reports."""
 
 from __future__ import annotations
 

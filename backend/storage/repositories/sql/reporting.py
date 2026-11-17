@@ -13,6 +13,7 @@ class SQLTruthReportRepository(TruthReportRepository):
     """SQLite/SQL repository for Truth Report records."""
 
     def create(self, record: TruthReportRecord) -> TruthReportRecord:
+        """Saves one report using SQL."""
         sql = """
         INSERT INTO truth_reports (
             case_id, title, summary, text_report, status, confidence_score,
@@ -48,6 +49,7 @@ class SQLTruthReportRepository(TruthReportRepository):
         return record
 
     def get_by_case(self, case_id: str) -> Optional[TruthReportRecord]:
+        """The report saved for one check using SQL."""
         sql = "SELECT * FROM truth_reports WHERE case_id = ?;"
         cursor = self.conn.execute(sql, (case_id,))
         row = cursor.fetchone()
@@ -56,6 +58,7 @@ class SQLTruthReportRepository(TruthReportRepository):
         return self._row_to_record(row)
 
     def _row_to_record(self, row: dict) -> TruthReportRecord:
+        """Turns one database row into a report object."""
         return TruthReportRecord(
             case_id=row["case_id"],
             title=row["title"] or "",

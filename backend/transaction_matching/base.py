@@ -19,6 +19,7 @@ class MatchCandidate:
         confidence: float,
         reasoning: str,
     ) -> None:
+        """A possible match between claims and bank transactions, with its confidence and reasons."""
         self.match_type = match_type
         self.claims = claims
         self.transactions = transactions

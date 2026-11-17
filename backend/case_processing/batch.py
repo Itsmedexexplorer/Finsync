@@ -31,16 +31,19 @@ from backend.domain.transaction import Transaction
 
 
 def _norm_ref(value: Optional[str]) -> str:
+    """A reference in a comparable form: upper case, letters and digits only."""
     return re.sub(r"[^A-Z0-9]", "", (value or "").upper())
 
 
 def _norm_name(value: Optional[str]) -> str:
+    """A person or business name in a comparable form: lower case, no punctuation, no 'Pvt Ltd' style words."""
     v = re.sub(r"[^a-z0-9 ]", " ", (value or "").lower())
     v = re.sub(r"\b(?:m s|ms|mr|mrs|shri|pvt|private|ltd|limited|llp|the)\b", " ", v)
     return " ".join(v.split())
 
 
 def _refs_of(claim: Claim) -> List[str]:
+    """The payment references (UTR / UPI id) a claim carries, in comparable form."""
     meta = claim.metadata or {}
     out: List[str] = []
     for v in (claim.reference_id_hint, meta.get("payment_reference")):
@@ -52,12 +55,14 @@ def _refs_of(claim: Claim) -> List[str]:
 
 @dataclass
 class PaymentGroup:
+    """One payment found in an upload: the claims about it and the files they came from."""
     claims: List[Claim] = field(default_factory=list)
     evidence: List[Evidence] = field(default_factory=list)
 
 
 @dataclass
 class BatchPlan:
+    """Everything read from one upload: bank statement rows, the payments found, and files nothing could be read from."""
     bank_evidence: List[Evidence]
     transactions: List[Transaction]
     groups: List[PaymentGroup]
@@ -100,12 +105,14 @@ def plan_batch(pipeline, file_paths: List[str]) -> BatchPlan:
     parent = list(range(len(claims)))
 
     def find(i: int) -> int:
+        """Union-find: the representative claim of the group claim i belongs to."""
         while parent[i] != i:
             parent[i] = parent[parent[i]]
             i = parent[i]
         return i
 
     def union(a: int, b: int) -> None:
+        """Union-find: puts the groups of claims a and b together (they are the same payment)."""
         ra, rb = find(a), find(b)
         if ra != rb:
             parent[rb] = ra
@@ -178,6 +185,7 @@ def case_input_for(plan: BatchPlan, group: PaymentGroup, case_id: str, batch_met
 
 
 def new_batch_id() -> str:
+    """A new id for one upload, e.g. BATCH-1a2b3c4d; its checks are BATCH-1a2b3c4d-01, -02 ..."""
     return f"BATCH-{uuid.uuid4().hex[:8]}"
 
 

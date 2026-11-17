@@ -1,4 +1,4 @@
-"""Provenance module for VERITY."""
+"""Provenance module for FinSync."""
 
 from backend.provenance.tracker import ProvenanceTracker
 

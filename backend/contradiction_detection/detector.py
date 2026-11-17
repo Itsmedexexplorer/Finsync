@@ -1,4 +1,4 @@
-"""Deterministic Contradiction Detector Engine for VERITY."""
+"""Deterministic Contradiction Detector Engine for FinSync."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ class ContradictionDetector:
     """Core deterministic detector identifying financial disagreements and anomalies."""
 
     def __init__(self, config: Optional[ContradictionConfig] = None) -> None:
+        """Creates the detector with its tolerance settings (amount, date window)."""
         self.config = config or ContradictionConfig()
 
     def detect(
@@ -36,7 +37,7 @@ class ContradictionDetector:
         txn_by_id = {t.id: t for t in transactions}
 
         # -------------------------------------------------------------
-        # 1. Contradictions from Match Relationships (Day 5 Context)
+        # 1. Contradictions from Match Relationships (Context)
         # -------------------------------------------------------------
         if match_relationships:
             for rel in match_relationships:
@@ -124,7 +125,7 @@ class ContradictionDetector:
                             ))
 
         # -------------------------------------------------------------
-        # 2. Contradictions from Deduplication Groups (Day 6 Context)
+        # 2. Contradictions from Deduplication Groups (Context)
         # -------------------------------------------------------------
         if deduplication_groups:
             for grp in deduplication_groups:

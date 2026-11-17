@@ -1,4 +1,4 @@
-"""Result and status models for the VERITY Extraction Subsystem.
+"""Result and status models for the FinSync Extraction Subsystem.
 
 Ensures provider-independent extraction results with explicit confidence metadata,
 warnings, error tracking, and strict separation between asserted claims and financial truth.

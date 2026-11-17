@@ -1,4 +1,4 @@
-"""VERITY Persistent Data Models & Persistence Schemas (Day 16).
+"""FinSync Persistent Data Models & Persistence Schemas.
 
 Defines strongly typed persistence models across all pipeline stages, ensuring
 deterministic immutability boundaries for financial records, append-only guarantees
@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 
 def _utc_now_iso() -> str:
+    """The current time in UTC as an ISO-8601 string."""
     return datetime.now(timezone.utc).isoformat()
 
 
@@ -101,7 +102,7 @@ class TransactionRecord(BaseModel):
 # 3. MATCHING, DEDUPLICATION & CONTRADICTIONS
 # -------------------------------------------------------------
 class MatchRelationshipRecord(BaseModel):
-    """Persistent record of a Day 5 transaction match."""
+    """Persistent record of a transaction match."""
     id: str = Field(...)
     case_id: str = Field(...)
     relationship_type: str = Field(...)
@@ -118,7 +119,7 @@ class MatchRelationshipRecord(BaseModel):
 
 
 class DeduplicationGroupRecord(BaseModel):
-    """Persistent record of a Day 6 cross-modal deduplication group."""
+    """Persistent record of a cross-modal deduplication group."""
     id: str = Field(...)
     case_id: str = Field(...)
     group_type: str = Field(...)
@@ -131,7 +132,7 @@ class DeduplicationGroupRecord(BaseModel):
 
 
 class DiscrepancyRecord(BaseModel):
-    """Persistent record of a Day 7 detected discrepancy/contradiction."""
+    """Persistent record of a detected discrepancy/contradiction."""
     id: str = Field(...)
     case_id: str = Field(...)
     discrepancy_type: str = Field(...)
@@ -150,7 +151,7 @@ class DiscrepancyRecord(BaseModel):
 # 4. RECONCILIATION & REPORTING (DETERMINISTIC TRUTH)
 # -------------------------------------------------------------
 class ReconciliationRecordModel(BaseModel):
-    """Persistent record of a Day 8 reconciliation result."""
+    """Persistent record of a reconciliation result."""
     reconciliation_id: str = Field(...)
     case_id: str = Field(...)
     status: str = Field(...)
@@ -177,7 +178,7 @@ class ReconciliationRecordModel(BaseModel):
 
 
 class TruthReportRecord(BaseModel):
-    """Persistent record of a Day 9 Financial Truth Report."""
+    """Persistent record of a Financial Truth Report."""
     case_id: str = Field(...)
     title: str = Field(default="")
     summary: str = Field(default="")
@@ -195,7 +196,7 @@ class TruthReportRecord(BaseModel):
 # 5. CONTROLLER & OPERATIONAL REVIEW
 # -------------------------------------------------------------
 class ControllerDecisionRecord(BaseModel):
-    """Persistent record of Day 13 AI Controller decisions."""
+    """Saved controller decision for a check (priority and next actions, decided by fixed rules)."""
     case_id: str = Field(...)
     risk_level: str = Field(...)
     decision: str = Field(...)
@@ -209,7 +210,7 @@ class ControllerDecisionRecord(BaseModel):
 
 
 class ReviewRecordModel(BaseModel):
-    """Persistent record of Day 14 Human Review workspace state."""
+    """Persistent record of Human Review workspace state."""
     review_id: str = Field(...)
     case_id: str = Field(...)
     status: str = Field(default="PENDING")

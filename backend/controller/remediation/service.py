@@ -1,4 +1,4 @@
-"""Remediation Action Service & Human Approval Workflow (Day 19).
+"""Remediation Action Service & Human Approval Workflow.
 
 Strict Invariants:
 1. HUMAN IN THE LOOP: No action is marked APPROVED without explicit human approval.
@@ -44,6 +44,7 @@ class RemediationActionService:
         engine: DatabaseEngine,
         review_service: Optional[ReviewService] = None,
     ):
+        """Creates the follow-up service on top of the database and the review service."""
         self.engine = engine
         self.review_service = review_service or ReviewService()
         self._actions_store: Dict[str, RemediationAction] = {}

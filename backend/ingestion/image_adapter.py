@@ -1,4 +1,4 @@
-"""Image and Payment Screenshot Ingestion Adapter for VERITY.
+"""Image and Payment Screenshot Ingestion Adapter for FinSync.
 
 Ingests PNG, JPG/JPEG, and WEBP payment screenshots and physical vouchers,
 validates integrity, extracts technical dimensions/metadata, and creates canonical Evidence.
@@ -24,6 +24,7 @@ class ImagePaymentScreenshotAdapter(BaseIngestionAdapter):
 
     @property
     def supported_modalities(self) -> List[EvidenceModality]:
+        """The kinds of evidence this adapter produces (for example bank statement, invoice, screenshot, chat)."""
         return [
             EvidenceModality.PAYMENT_SCREENSHOT,
             EvidenceModality.RECEIPT,
@@ -32,6 +33,7 @@ class ImagePaymentScreenshotAdapter(BaseIngestionAdapter):
 
     @property
     def supported_extensions(self) -> List[str]:
+        """The file extensions this adapter accepts."""
         return [".png", ".jpg", ".jpeg", ".webp"]
 
     def ingest_file(
@@ -40,6 +42,7 @@ class ImagePaymentScreenshotAdapter(BaseIngestionAdapter):
         source_type: Optional[EvidenceSourceType] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> IngestionResult:
+        """Reads the file from disk (checking it exists and is not empty) and passes its content to ingest_payload."""
         path = Path(file_path)
         if not path.exists():
             return IngestionResult.create_failure(
@@ -97,6 +100,7 @@ class ImagePaymentScreenshotAdapter(BaseIngestionAdapter):
         source_type: Optional[EvidenceSourceType] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> IngestionResult:
+        """Turns an image (screenshot or photo) into one evidence item; the picture is kept so OCR can read it later."""
         if isinstance(raw_content, str):
             img_bytes = raw_content.encode("latin-1", errors="ignore")
         else:
@@ -142,7 +146,7 @@ class ImagePaymentScreenshotAdapter(BaseIngestionAdapter):
         st = source_type or EvidenceSourceType.MANUAL_UPLOAD
         base_meta = metadata or {}
 
-        # Determine MIME type for VLM providers
+        # Record the image type (PNG/JPEG) for the OCR reader
         mime_map = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}
         mime_type = mime_map.get(img_format, f"image/{img_format.lower()}")
 
@@ -155,7 +159,7 @@ class ImagePaymentScreenshotAdapter(BaseIngestionAdapter):
             "color_mode": mode,
             "file_size_bytes": len(img_bytes),
             "mime_type": mime_type,
-            # Base64-encoded image data for VLM extraction — never used in financial calculations
+            # The picture itself (base64), kept so OCR can read it
             "image_bytes_b64": base64.b64encode(img_bytes).decode("ascii"),
         }
 

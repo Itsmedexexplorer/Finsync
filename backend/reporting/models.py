@@ -1,4 +1,4 @@
-"""Strongly typed domain models for VERITY Explainable Financial Truth Reports."""
+"""Strongly typed domain models for FinSync Explainable Financial Truth Reports."""
 
 from __future__ import annotations
 

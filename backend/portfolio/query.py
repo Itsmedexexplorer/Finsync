@@ -1,4 +1,4 @@
-"""VERITY Portfolio Query, Filtering & Search Engine (Day 15).
+"""FinSync Portfolio Query, Filtering & Search Engine.
 
 Provides deterministic filtering, full-text searching, multi-key sorting,
 and pagination across CasePortfolioItem collections.

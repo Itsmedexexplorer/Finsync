@@ -1,4 +1,4 @@
-"""Configuration parameters for VERITY Transaction Matching Engine."""
+"""Configuration parameters for FinSync Transaction Matching Engine."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Persistent Audit Store with Cryptographic SHA-256 Hash Chaining (Day 16).
+"""Persistent Audit Store with Cryptographic SHA-256 Hash Chaining.
 
 Ensures audit events are stored persistently, sequentially, and immutably.
 Verifies complete cryptographic chain integrity and detects database-level tampering.
@@ -30,6 +30,7 @@ class PersistentAuditStore:
     """Persistent, tamper-evident audit store backed by SQL storage."""
 
     def __init__(self, engine: Optional[DatabaseEngine] = None) -> None:
+        """Creates the audit-trail store on top of the database."""
         self.engine = engine or get_database_engine()
         self._lock = threading.RLock()
 
@@ -73,6 +74,7 @@ class PersistentAuditStore:
         event_id = f"AUD-{case_id[:8]}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')}-{uuid.uuid4().hex[:6]}"
 
         def _do_append(db_conn: DatabaseConnection) -> AuditEventRecord:
+            """Adds the event with the SHA-256 hash of the previous event, so any later change breaks the chain."""
             repo = SQLAuditRepository(db_conn)
             latest = repo.get_latest_event(case_id)
 

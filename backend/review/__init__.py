@@ -1,4 +1,4 @@
-"""VERITY Human Review & Case Investigation Subsystem."""
+"""FinSync Human Review & Case Investigation Subsystem."""
 
 from backend.review.actions import ReviewActionFactory
 from backend.review.audit import AuditTrail

@@ -1,4 +1,4 @@
-"""VERITY Storage & Database Configuration (Day 16).
+"""FinSync Storage & Database Configuration.
 
 Provides configuration settings for persistent storage, connection pooling,
 database timeouts, and query logging.

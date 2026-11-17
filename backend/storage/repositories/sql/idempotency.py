@@ -12,6 +12,7 @@ class SQLIdempotencyRepository(IdempotencyRepository):
     """SQLite/SQL repository for idempotency tracking."""
 
     def get(self, key: str) -> Optional[IdempotencyRecord]:
+        """The stored response for this idempotency key, if the same request was seen before."""
         sql = "SELECT * FROM idempotency_records WHERE key = ?;"
         cursor = self.conn.execute(sql, (key,))
         row = cursor.fetchone()
@@ -27,6 +28,7 @@ class SQLIdempotencyRepository(IdempotencyRepository):
         )
 
     def create(self, record: IdempotencyRecord) -> IdempotencyRecord:
+        """Remembers the response for an idempotency key."""
         sql = """
         INSERT INTO idempotency_records (
             key, case_id, request_hash, response_reference, status, created_at

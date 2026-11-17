@@ -13,6 +13,7 @@ class SQLClaimRepository(ClaimRepository):
     """SQLite/SQL repository for Claim records."""
 
     def create(self, record: ClaimRecord) -> ClaimRecord:
+        """Saves one claim (what a file says was paid) using SQL."""
         sql = """
         INSERT INTO claims (
             id, case_id, evidence_id, claim_type, claimed_amount, claimed_date,
@@ -39,11 +40,13 @@ class SQLClaimRepository(ClaimRepository):
         return record
 
     def create_batch(self, records: List[ClaimRecord]) -> List[ClaimRecord]:
+        """Saves many claim (what a file says was paid) records in one go using SQL."""
         for r in records:
             self.create(r)
         return records
 
     def get(self, claim_id: str, case_id: Optional[str] = None) -> Optional[ClaimRecord]:
+        """Loads one claim (what a file says was paid) by its id using SQL; None when not found."""
         if case_id:
             sql = "SELECT * FROM claims WHERE id = ? AND case_id = ?;"
             cursor = self.conn.execute(sql, (claim_id, case_id))
@@ -56,6 +59,7 @@ class SQLClaimRepository(ClaimRepository):
         return self._row_to_record(row)
 
     def list_by_case(self, case_id: str) -> List[ClaimRecord]:
+        """Every claim (what a file says was paid) that belongs to one check using SQL."""
         sql = "SELECT * FROM claims WHERE case_id = ? ORDER BY created_at ASC;"
         cursor = self.conn.execute(sql, (case_id,))
         return [self._row_to_record(r) for r in cursor.fetchall()]
@@ -75,6 +79,7 @@ class SQLClaimRepository(ClaimRepository):
         return [self._row_to_record(r) for r in cursor.fetchall()]
 
     def _row_to_record(self, row: dict) -> ClaimRecord:
+        """Turns one database row into a claim (what a file says was paid) object."""
         return ClaimRecord(
             id=row["id"],
             case_id=row["case_id"],

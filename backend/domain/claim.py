@@ -82,6 +82,7 @@ class Claim(BaseModel):
     @field_validator("claimed_amount")
     @classmethod
     def validate_amount_non_negative(cls, v: Optional[float]) -> Optional[float]:
+        """A claimed amount can be missing but never negative."""
         if v is not None:
             if v < 0:
                 raise ValueError("Claimed amount cannot be negative")

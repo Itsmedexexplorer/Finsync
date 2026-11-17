@@ -1,9 +1,8 @@
-"""Provider-independent AI/VLM Extraction Engine for VERITY.
+"""Optional AI reader: NOT USED BY FINSYNC.
 
-Provides structured schema-constrained financial extraction with strict anti-hallucination
-safeguards, supporting OpenAI-compatible, Gemini, custom, and mock providers.
-
-Day 17: Real multimodal extraction — image/VLM support via google-genai SDK.
+This module is a plug-in point for an external AI reader. It is switched off: the provider
+setting stays MOCK and no API key is configured, so FinSync never calls it. Every amount,
+reference and name in FinSync is read with fixed rules and Tesseract OCR.
 """
 
 from __future__ import annotations
@@ -96,7 +95,7 @@ class StructuredClaimExtractionOutput(BaseModel):
     )
 
 
-EXTRACTION_SYSTEM_PROMPT = """You are VERITY's Financial Evidence Extraction Engine.
+EXTRACTION_SYSTEM_PROMPT = """You are FinSync's Financial Evidence Extraction Engine.
 Your task is to extract structured financial claims from raw evidence (messages, invoices, receipts, screenshots).
 
 CRITICAL ANTI-HALLUCINATION RULES:
@@ -140,16 +139,19 @@ class AIExtractionProvider(BaseExtractor):
         config: Optional[AIProviderConfig] = None,
         mock_invoker: Optional[Callable[[str], str]] = None,
     ) -> None:
+        """Optional reader kept from an earlier experiment. It is switched off and not used by FinSync; all reading uses fixed rules and Tesseract OCR."""
         self.config = config or AIProviderConfig()
         self.mock_invoker = mock_invoker
         self._gemini_client = None
 
     @property
     def provider_name(self) -> str:
+        """Short name of this reader; it is recorded on every claim it makes, so each result can be traced to its rule."""
         return f"ai_{self.config.provider_type.value.lower()}_{self.config.model_name}"
 
     def can_extract(self, evidence: Evidence) -> bool:
         # AI extractor can handle any unstructured or multimodal evidence
+        """True when this reader handles this kind of evidence."""
         return True
 
     def extract(
@@ -158,6 +160,7 @@ class AIExtractionProvider(BaseExtractor):
         context: Optional[Dict[str, Any]] = None,
     ) -> ExtractionResult:
         # Check API key configuration for live providers
+        """Not used by FinSync (switched off). FinSync reads files with fixed rules and OCR instead."""
         if self.config.provider_type != AIProviderType.MOCK:
             api_key = (
                 os.environ.get(self.config.api_key_env_var)

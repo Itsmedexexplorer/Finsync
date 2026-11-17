@@ -1,4 +1,4 @@
-"""Strongly typed domain models for the VERITY Human Review & Audit Subsystem."""
+"""Strongly typed domain models for the FinSync Human Review & Audit Subsystem."""
 
 from __future__ import annotations
 
@@ -145,23 +145,27 @@ class ReviewRecord(BaseModel):
 # -------------------------------------------------------------
 
 class StartReviewRequest(BaseModel):
+    """Request body for: start review."""
     reviewer_id: str = Field(default="controller_1", description="ID of reviewer starting review")
     reviewer_name: str = Field(default="Finance Controller", description="Name of reviewer")
 
 
 class AddNoteRequest(BaseModel):
+    """Request body for: add note."""
     reviewer_id: str = Field(default="controller_1")
     reviewer_name: str = Field(default="Finance Controller")
     content: str = Field(..., min_length=1, max_length=5000, description="Note content")
 
 
 class EvidenceReviewRequest(BaseModel):
+    """Request body for: evidence review."""
     reviewer_id: str = Field(default="controller_1")
     reviewer_name: str = Field(default="Finance Controller")
     notes: Optional[str] = Field(default=None, max_length=2000)
 
 
 class CreateActionRequest(BaseModel):
+    """Request body for: create action."""
     action_type: ReviewActionType = Field(default=ReviewActionType.REVIEW_EVIDENCE)
     title: str = Field(..., min_length=2, max_length=200)
     description: str = Field(default="", max_length=1000)
@@ -171,11 +175,13 @@ class CreateActionRequest(BaseModel):
 
 
 class CompleteActionRequest(BaseModel):
+    """Request body for: complete action."""
     reviewer_id: str = Field(default="controller_1")
     notes: Optional[str] = Field(default=None, max_length=2000)
 
 
 class RecordDecisionRequest(BaseModel):
+    """Request body for: record decision."""
     decision: ReviewDecision = Field(..., description="Human review verdict")
     reviewer_id: str = Field(default="controller_1")
     reviewer_name: str = Field(default="Finance Controller")
@@ -183,18 +189,21 @@ class RecordDecisionRequest(BaseModel):
 
 
 class EscalateReviewRequest(BaseModel):
+    """Request body for: escalate review."""
     reason: str = Field(..., min_length=3, max_length=2000, description="Escalation justification")
     reviewer_id: str = Field(default="controller_1")
     reviewer_name: str = Field(default="Finance Controller")
 
 
 class ResolveReviewRequest(BaseModel):
+    """Request body for: resolve review."""
     reviewer_id: str = Field(default="controller_1")
     reviewer_name: str = Field(default="Finance Controller")
     notes: Optional[str] = Field(default=None, max_length=2000)
 
 
 class CloseReviewRequest(BaseModel):
+    """Request body for: close review."""
     reviewer_id: str = Field(default="controller_1")
     reviewer_name: str = Field(default="Finance Controller")
     notes: Optional[str] = Field(default=None, max_length=2000)

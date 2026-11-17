@@ -1,4 +1,4 @@
-"""Deterministic Finance Controller Pipeline for VERITY.
+"""Deterministic Finance Controller Pipeline for FinSync.
 
 Coordinates the 8 sequential stages:
 1. Ingestion & Normalization
@@ -51,6 +51,7 @@ class FinanceControllerPipeline:
         reporting_service: Optional[ReportingService] = None,
         provenance_tracker: Optional[ProvenanceTracker] = None,
     ) -> None:
+        """Builds the 8-stage pipeline. Each stage service can be swapped for testing; by default the standard services are used."""
         self.provenance_tracker = provenance_tracker or ProvenanceTracker()
         self.ingestion_service = ingestion_service or IngestionService()
         self.extraction_service = extraction_service or ExtractionService()
@@ -380,6 +381,7 @@ class FinanceControllerPipeline:
 
 
 def _parse_statement_date(value: Optional[str]) -> Optional["datetime"]:
+    """Reads a bank statement date in the common Indian formats (15/08/2026, 15-Aug-2026, 2026-08-15)."""
     from datetime import datetime, timezone
 
     if not value:

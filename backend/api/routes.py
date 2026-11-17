@@ -509,7 +509,7 @@ def get_case_provenance(
 
 
 # -------------------------------------------------------------
-# AI FINANCE CONTROLLER DECISION INTELLIGENCE ENDPOINTS
+# FINANCE CONTROLLER ENDPOINTS (FIXED RULES: PRIORITY, NEXT ACTIONS, PLAIN-ENGLISH ANSWERS)
 # -------------------------------------------------------------
 
 @router.get("/api/v1/cases/{case_id}/controller", tags=["Finance Controller"])
@@ -1466,7 +1466,7 @@ def verify_case_audit_integrity(case_id: str):
 
 
 # -------------------------------------------------------------
-# CROSS-CASE INTELLIGENCE & COUNTERPARTY MEMORY (Day 18)
+# CROSS-CASE INTELLIGENCE & COUNTERPARTY MEMORY
 # -------------------------------------------------------------
 
 @router.get("/api/v1/entities/{entity_name_or_id}/history", tags=["Cross-Case Intelligence"])

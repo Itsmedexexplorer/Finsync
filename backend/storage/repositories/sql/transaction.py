@@ -13,6 +13,7 @@ class SQLTransactionRepository(TransactionRepository):
     """SQLite/SQL repository for Transaction records."""
 
     def create(self, record: TransactionRecord) -> TransactionRecord:
+        """Saves one bank transaction using SQL."""
         sql = """
         INSERT INTO transactions (
             id, case_id, amount, direction, timestamp, bank_reference,
@@ -39,11 +40,13 @@ class SQLTransactionRepository(TransactionRepository):
         return record
 
     def create_batch(self, records: List[TransactionRecord]) -> List[TransactionRecord]:
+        """Saves many bank transaction records in one go using SQL."""
         for r in records:
             self.create(r)
         return records
 
     def get(self, transaction_id: str, case_id: Optional[str] = None) -> Optional[TransactionRecord]:
+        """Loads one bank transaction by its id using SQL; None when not found."""
         if case_id:
             sql = "SELECT * FROM transactions WHERE id = ? AND case_id = ?;"
             cursor = self.conn.execute(sql, (transaction_id, case_id))
@@ -56,6 +59,7 @@ class SQLTransactionRepository(TransactionRepository):
         return self._row_to_record(row)
 
     def list_by_case(self, case_id: str) -> List[TransactionRecord]:
+        """Every bank transaction that belongs to one check using SQL."""
         sql = "SELECT * FROM transactions WHERE case_id = ? ORDER BY created_at ASC;"
         cursor = self.conn.execute(sql, (case_id,))
         return [self._row_to_record(r) for r in cursor.fetchall()]
@@ -68,6 +72,7 @@ class SQLTransactionRepository(TransactionRepository):
         return [self._row_to_record(r) for r in cursor.fetchall()]
 
     def _row_to_record(self, row: dict) -> TransactionRecord:
+        """Turns one database row into a bank transaction object."""
         return TransactionRecord(
             id=row["id"],
             case_id=row["case_id"],

@@ -1,4 +1,4 @@
-"""Unified Financial Reconciliation Service for VERITY.
+"""Unified Financial Reconciliation Service for FinSync.
 
 Orchestrates multi-stage financial truth reconstruction across Evidence, Claims, Entities,
 Matches, Deduplication Groups, and Discrepancies.
@@ -31,6 +31,7 @@ class ReconciliationService(BaseReconciler):
         config: Optional[ReconciliationConfig] = None,
         provenance_tracker: Optional[ProvenanceTracker] = None,
     ) -> None:
+        """Creates the reconciliation stage."""
         self.config = config or ReconciliationConfig()
         self.tracker = provenance_tracker or ProvenanceTracker()
         self.engine = ReconciliationEngine(config=self.config, provenance_tracker=self.tracker)
@@ -122,7 +123,7 @@ class ReconciliationService(BaseReconciler):
         transactions: List[Transaction],
         counterparty: Optional[Entity] = None,
     ) -> ReconciliationRecord:
-        """Backward compatibility with Day 1 case evaluation."""
+        """Older single-check entry point, kept so existing callers keep working."""
         return self.engine.reconcile_case(
             reconciliation_id=reconciliation_id,
             evidence_items=evidence_items,

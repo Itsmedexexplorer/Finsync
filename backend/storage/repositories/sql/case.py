@@ -13,6 +13,7 @@ class SQLCaseRepository(CaseRepository):
     """SQLite/SQL repository for cases."""
 
     def create(self, record: CaseRecord) -> CaseRecord:
+        """Saves one check using SQL."""
         sql = """
         INSERT INTO cases (
             case_id, status, confidence_score, total_execution_time_ms,
@@ -46,6 +47,7 @@ class SQLCaseRepository(CaseRepository):
         return record
 
     def get(self, case_id: str) -> Optional[CaseRecord]:
+        """Loads one check by its id using SQL; None when not found."""
         sql = "SELECT * FROM cases WHERE case_id = ?;"
         cursor = self.conn.execute(sql, (case_id,))
         row = cursor.fetchone()
@@ -54,27 +56,32 @@ class SQLCaseRepository(CaseRepository):
         return self._row_to_record(row)
 
     def list_all(self, limit: int = 100, offset: int = 0) -> List[CaseRecord]:
+        """All check records, newest first, a page at a time using SQL."""
         sql = "SELECT * FROM cases ORDER BY created_at DESC LIMIT ? OFFSET ?;"
         cursor = self.conn.execute(sql, (limit, offset))
         return [self._row_to_record(r) for r in cursor.fetchall()]
 
     def count(self) -> int:
+        """How many check records are stored."""
         sql = "SELECT COUNT(*) AS c FROM cases;"
         cursor = self.conn.execute(sql)
         row = cursor.fetchone()
         return row["c"] if row else 0
 
     def exists(self, case_id: str) -> bool:
+        """True when a check with this id is stored."""
         sql = "SELECT 1 FROM cases WHERE case_id = ?;"
         cursor = self.conn.execute(sql, (case_id,))
         return cursor.fetchone() is not None
 
     def delete_if_allowed(self, case_id: str) -> bool:
+        """Deletes a check and everything stored under it."""
         sql = "DELETE FROM cases WHERE case_id = ?;"
         cursor = self.conn.execute(sql, (case_id,))
         return cursor.rowcount > 0
 
     def _row_to_record(self, row: dict) -> CaseRecord:
+        """Turns one database row into a check object."""
         return CaseRecord(
             case_id=row["case_id"],
             status=row["status"],

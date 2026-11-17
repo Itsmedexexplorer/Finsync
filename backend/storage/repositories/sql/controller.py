@@ -13,6 +13,7 @@ class SQLControllerRepository(ControllerRepository):
     """SQLite/SQL repository for Controller Decision records."""
 
     def create(self, record: ControllerDecisionRecord) -> ControllerDecisionRecord:
+        """Saves one controller decision using SQL."""
         sql = """
         INSERT INTO controller_decisions (
             case_id, risk_level, decision, requires_human_review, confidence,
@@ -46,6 +47,7 @@ class SQLControllerRepository(ControllerRepository):
         return record
 
     def get_by_case(self, case_id: str) -> Optional[ControllerDecisionRecord]:
+        """The controller decision saved for one check using SQL."""
         sql = "SELECT * FROM controller_decisions WHERE case_id = ?;"
         cursor = self.conn.execute(sql, (case_id,))
         row = cursor.fetchone()
@@ -54,6 +56,7 @@ class SQLControllerRepository(ControllerRepository):
         return self._row_to_record(row)
 
     def _row_to_record(self, row: dict) -> ControllerDecisionRecord:
+        """Turns one database row into a controller decision object."""
         return ControllerDecisionRecord(
             case_id=row["case_id"],
             risk_level=row["risk_level"],

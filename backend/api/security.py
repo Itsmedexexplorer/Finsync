@@ -1,4 +1,4 @@
-"""API Security, Input Validation, and Resource Protection for VERITY."""
+"""API Security, Input Validation, and Resource Protection for FinSync."""
 
 from __future__ import annotations
 
@@ -71,7 +71,7 @@ class SecurityValidator:
 
     @staticmethod
     def validate_file_extension(filename: str) -> str:
-        """Validates that the file extension is supported by VERITY ingestion adapters."""
+        """Validates that the file extension is supported by FinSync ingestion adapters."""
         clean_name = SecurityValidator.sanitize_filename(filename)
         suffix = Path(clean_name).suffix.lower()
 

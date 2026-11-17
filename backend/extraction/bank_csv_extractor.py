@@ -1,4 +1,4 @@
-"""Deterministic Bank CSV Claim Extractor for VERITY.
+"""Deterministic Bank CSV Claim Extractor for FinSync.
 
 Extracts structured financial claims from normalized Bank Statement CSV evidence.
 Never performs reconciliation or transaction matching.
@@ -21,9 +21,11 @@ class BankCSVExtractor(BaseExtractor):
 
     @property
     def provider_name(self) -> str:
+        """Short name of this reader; it is recorded on every claim it makes, so each result can be traced to its rule."""
         return "deterministic_bank_csv"
 
     def can_extract(self, evidence: Evidence) -> bool:
+        """True when this reader handles this kind of evidence."""
         return (
             evidence.modality == EvidenceModality.BANK_STATEMENT
             and evidence.source_type == EvidenceSourceType.BANK_CSV
@@ -34,6 +36,7 @@ class BankCSVExtractor(BaseExtractor):
         evidence: Evidence,
         context: Optional[Dict[str, Any]] = None,
     ) -> ExtractionResult:
+        """Turns one bank statement row into a claim holding its date, amount, direction, reference and narration; the pipeline then makes it a bank transaction."""
         if not self.can_extract(evidence):
             return ExtractionResult.create_failure(
                 evidence_id=evidence.id,

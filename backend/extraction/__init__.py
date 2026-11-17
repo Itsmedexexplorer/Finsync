@@ -1,4 +1,4 @@
-"""Extraction subsystem for VERITY."""
+"""Extraction subsystem for FinSync."""
 
 from backend.extraction.ai_provider import (
     AIExtractionProvider,

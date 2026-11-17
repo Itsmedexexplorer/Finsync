@@ -21,10 +21,12 @@ from backend.entity_resolution.normalizer import EntityNormalizer
 
 
 def _norm(value: Optional[str]) -> str:
+    """Upper case, letters and digits only, so references compare reliably."""
     return re.sub(r"[^A-Z0-9]", "", (value or "").upper())
 
 
 def _refs(claim: Claim) -> List[str]:
+    """The references on a bill (UTR, payment reference, invoice number) that could appear in the bank narration."""
     meta = claim.metadata or {}
     values = [claim.reference_id_hint, meta.get("payment_reference"), meta.get("invoice_number")]
     out = []
@@ -36,16 +38,19 @@ def _refs(claim: Claim) -> List[str]:
 
 
 def _txn_mentions_ref(txn: Transaction, refs: Sequence[str]) -> bool:
+    """True when a bank line's reference or narration contains one of the bill's references."""
     ref = _norm(txn.bank_reference)
     narration = _norm(txn.narration)
     return any(r == ref or (r and r in narration) for r in refs)
 
 
 def _name_tokens(name: Optional[str]) -> List[str]:
+    """The meaningful words of a business name (short and generic words removed)."""
     return [t for t in EntityNormalizer.extract_core_name_tokens(name) if len(t) > 2]
 
 
 def _txn_mentions_name(txn: Transaction, name: Optional[str]) -> bool:
+    """True when the bank narration names the bill's vendor."""
     tokens = _name_tokens(name)
     if not tokens:
         return False
@@ -56,11 +61,13 @@ def _txn_mentions_name(txn: Transaction, name: Optional[str]) -> bool:
 
 
 def _vendor_names(claim: Claim) -> List[str]:
+    """Who issued the bill: vendor or letterhead name read from it."""
     meta = claim.metadata or {}
     return [n for n in (meta.get("party_issuer"), meta.get("party_vendor")) if n]
 
 
 def _same_amount(txn: Transaction, amount: Optional[float]) -> bool:
+    """True when the bank line moves exactly the bill amount (to the paisa)."""
     return amount is not None and abs(txn.amount - amount) < 0.01
 
 

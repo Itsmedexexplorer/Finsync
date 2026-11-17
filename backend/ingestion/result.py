@@ -1,4 +1,4 @@
-"""Result and error models for the VERITY Evidence Ingestion subsystem.
+"""Result and error models for the FinSync Evidence Ingestion subsystem.
 
 Enables precise tracking of ingestion success, partial failures, malformed rows,
 and unsupported formats without silent data loss.

@@ -1,4 +1,4 @@
-"""Unified Case Processing Service for VERITY Finance Controller Pipeline."""
+"""Unified Case Processing Service for FinSync Finance Controller Pipeline."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ class CaseProcessingService:
     """High-level service for executing end-to-end financial case processing."""
 
     def __init__(self, pipeline: Optional[FinanceControllerPipeline] = None) -> None:
+        """The service the API calls to run a check; it holds one pipeline."""
         self.pipeline = pipeline or FinanceControllerPipeline()
 
     def process_case(self, case_input: CaseInput) -> CaseProcessingResult:

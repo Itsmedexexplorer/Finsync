@@ -1,4 +1,4 @@
-"""VERITY Unified Portfolio Management Service (Day 15).
+"""FinSync Unified Portfolio Management Service.
 
 Orchestrates portfolio aggregation, search/querying, SLA evaluation, reviewer assignment,
 workload balancing, and prioritization across all reconciled cases.
@@ -49,6 +49,7 @@ class PortfolioService:
     """Thread-safe orchestration service for portfolio operations."""
 
     def __init__(self, assignment_service: Optional[PortfolioAssignmentService] = None) -> None:
+        """Creates the portfolio of all the user's checks, sorted by what needs attention first."""
         self._lock = threading.Lock()
         self.assignment_service = assignment_service or PortfolioAssignmentService()
         # case_id -> CasePortfolioItem

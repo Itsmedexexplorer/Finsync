@@ -1,4 +1,4 @@
-"""Base interfaces and protocols for VERITY evidence extraction providers."""
+"""Base interfaces and protocols for FinSync evidence extraction providers."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from backend.extraction.result import ExtractionResult
 
 
 class BaseExtractor(ABC):
-    """Abstract interface for all evidence extraction engines (Deterministic & AI)."""
+    """Abstract interface for all evidence extraction engines (fixed-rule readers and OCR)."""
 
     @property
     @abstractmethod

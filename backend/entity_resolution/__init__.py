@@ -1,4 +1,4 @@
-"""Entity Resolution subsystem for VERITY."""
+"""Entity Resolution subsystem for FinSync."""
 
 from backend.entity_resolution.base import BaseEntityResolver, DeterministicEntityResolver
 from backend.entity_resolution.matcher import EntityMatcher

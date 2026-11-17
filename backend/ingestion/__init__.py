@@ -1,4 +1,4 @@
-"""Evidence Ingestion subsystem for VERITY."""
+"""Evidence Ingestion subsystem for FinSync."""
 
 from backend.ingestion.base import BaseIngestionAdapter
 from backend.ingestion.csv_adapter import BankCSVAdapter

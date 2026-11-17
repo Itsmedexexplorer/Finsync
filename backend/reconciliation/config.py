@@ -1,4 +1,4 @@
-"""Configuration for VERITY Financial Reconciliation Subsystem."""
+"""Configuration for FinSync Financial Reconciliation Subsystem."""
 
 from __future__ import annotations
 

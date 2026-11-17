@@ -15,6 +15,7 @@ from typing import Deque, Dict, Optional, Tuple
 
 @dataclass(frozen=True)
 class Limit:
+    """A rate limit: at most `requests` requests in `per_seconds` seconds."""
     requests: int
     per_seconds: int
 
@@ -31,7 +32,9 @@ UPLOAD_PATHS = ("/api/v1/cases/files", "/api/v1/cases/text", "/api/v1/cases")
 
 
 class SlidingWindowLimiter:
+    """Counts recent requests per key (IP address or user) and says when a limit is exceeded."""
     def __init__(self) -> None:
+        """Starts with no recorded requests."""
         self._hits: Dict[Tuple[str, int, int], Deque[float]] = {}
         self._lock = threading.Lock()
         self._last_sweep = time.monotonic()
@@ -52,6 +55,7 @@ class SlidingWindowLimiter:
             return None
 
     def _maybe_sweep(self, now: float) -> None:
+        """Now and then forgets keys with no recent requests, so memory does not grow forever."""
         if now - self._last_sweep < 300:
             return
         self._last_sweep = now
@@ -59,6 +63,7 @@ class SlidingWindowLimiter:
             del self._hits[k]
 
     def reset(self) -> None:
+        """Forgets every recorded request (used by tests)."""
         with self._lock:
             self._hits.clear()
 
@@ -77,6 +82,7 @@ def client_ip(scope) -> str:
 
 
 def user_limits_for(path: str, method: str):
+    """The limits that apply to one signed-in user's request: stricter for uploads, questions and other writes."""
     if method == "POST" and path in UPLOAD_PATHS:
         return [("upload", l) for l in UPLOAD_LIMITS]
     if method == "POST" and path.endswith("/controller/explain"):

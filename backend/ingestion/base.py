@@ -1,4 +1,4 @@
-"""Base interfaces and protocols for VERITY evidence ingestion adapters."""
+"""Base interfaces and protocols for FinSync evidence ingestion adapters."""
 
 from __future__ import annotations
 

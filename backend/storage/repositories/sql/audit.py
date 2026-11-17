@@ -13,6 +13,7 @@ class SQLAuditRepository(AuditRepository):
     """SQLite/SQL repository for immutable Audit Events."""
 
     def append(self, event: AuditEventRecord) -> AuditEventRecord:
+        """Adds one event to the end of a check's audit trail."""
         sql = """
         INSERT INTO audit_events (
             event_id, case_id, review_id, event_type, actor_id,
@@ -40,11 +41,13 @@ class SQLAuditRepository(AuditRepository):
         return event
 
     def list_by_case(self, case_id: str) -> List[AuditEventRecord]:
+        """Every audit-trail event that belongs to one check using SQL."""
         sql = "SELECT * FROM audit_events WHERE case_id = ? ORDER BY sequence_number ASC, timestamp ASC;"
         cursor = self.conn.execute(sql, (case_id,))
         return [self._row_to_record(r) for r in cursor.fetchall()]
 
     def get_latest_event(self, case_id: str) -> Optional[AuditEventRecord]:
+        """The newest audit-trail event of a check (its hash starts the next link)."""
         sql = "SELECT * FROM audit_events WHERE case_id = ? ORDER BY sequence_number DESC, timestamp DESC LIMIT 1;"
         cursor = self.conn.execute(sql, (case_id,))
         row = cursor.fetchone()
@@ -53,6 +56,7 @@ class SQLAuditRepository(AuditRepository):
         return self._row_to_record(row)
 
     def _row_to_record(self, row: dict) -> AuditEventRecord:
+        """Turns one database row into a audit-trail event object."""
         return AuditEventRecord(
             event_id=row["event_id"],
             case_id=row["case_id"],

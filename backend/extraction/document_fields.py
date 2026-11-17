@@ -43,6 +43,7 @@ _NOT_A_NAME = re.compile(r"\b(?:tax\s*invoice|invoice|receipt|statement|bill\s*o
 
 
 def _digits(value: str) -> int:
+    """How many digits a text contains."""
     return sum(ch.isdigit() for ch in value)
 
 
@@ -98,6 +99,7 @@ def find_invoice_number(text: str) -> Optional[str]:
 
 
 def _clean_name(value: str) -> Optional[str]:
+    """Tidies a name read from a document; returns None when it is mostly digits or too short to be a name."""
     value = re.split(r"\s{2,}|\t", value.strip())[0]
     value = re.sub(r"[\s,;:.]+$", "", value).strip()
     if len(value) < 2 or _digits(value) > len(value) // 2:

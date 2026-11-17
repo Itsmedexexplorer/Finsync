@@ -13,6 +13,7 @@ class SQLPortfolioRepository(PortfolioRepository):
     """SQLite/SQL repository for Case Portfolio states and assignments."""
 
     def save_state(self, state: PortfolioStateRecord) -> PortfolioStateRecord:
+        """Saves a check's portfolio entry (priority, status, owner)."""
         sql = """
         INSERT INTO portfolio_states (
             case_id, portfolio_status, priority, priority_score, priority_reasons,
@@ -60,6 +61,7 @@ class SQLPortfolioRepository(PortfolioRepository):
         return state
 
     def get_state(self, case_id: str) -> Optional[PortfolioStateRecord]:
+        """The portfolio entry of one check."""
         sql = "SELECT * FROM portfolio_states WHERE case_id = ?;"
         cursor = self.conn.execute(sql, (case_id,))
         row = cursor.fetchone()
@@ -68,11 +70,13 @@ class SQLPortfolioRepository(PortfolioRepository):
         return self._row_to_state(row)
 
     def list_states(self) -> List[PortfolioStateRecord]:
+        """Every portfolio entry."""
         sql = "SELECT * FROM portfolio_states ORDER BY created_at DESC;"
         cursor = self.conn.execute(sql)
         return [self._row_to_state(r) for r in cursor.fetchall()]
 
     def save_assignment(self, assignment: CaseAssignmentRecord) -> CaseAssignmentRecord:
+        """Saves who a check is assigned to."""
         sql = """
         INSERT INTO case_assignments (
             case_id, reviewer_id, reviewer_name, assigned_at, unassigned_at, active
@@ -98,6 +102,7 @@ class SQLPortfolioRepository(PortfolioRepository):
         return assignment
 
     def get_assignment(self, case_id: str) -> Optional[CaseAssignmentRecord]:
+        """Who one check is assigned to."""
         sql = "SELECT * FROM case_assignments WHERE case_id = ? AND active = 1;"
         cursor = self.conn.execute(sql, (case_id,))
         row = cursor.fetchone()
@@ -106,11 +111,13 @@ class SQLPortfolioRepository(PortfolioRepository):
         return self._row_to_assignment(row)
 
     def list_assignments(self) -> List[CaseAssignmentRecord]:
+        """Every assignment."""
         sql = "SELECT * FROM case_assignments WHERE active = 1;"
         cursor = self.conn.execute(sql)
         return [self._row_to_assignment(r) for r in cursor.fetchall()]
 
     def _row_to_state(self, row: dict) -> PortfolioStateRecord:
+        """Turns one database row into a portfolio entry."""
         return PortfolioStateRecord(
             case_id=row["case_id"],
             portfolio_status=row["portfolio_status"],
@@ -131,6 +138,7 @@ class SQLPortfolioRepository(PortfolioRepository):
         )
 
     def _row_to_assignment(self, row: dict) -> CaseAssignmentRecord:
+        """Turns one database row into an assignment."""
         return CaseAssignmentRecord(
             case_id=row["case_id"],
             reviewer_id=row["reviewer_id"],

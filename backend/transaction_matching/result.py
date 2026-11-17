@@ -1,4 +1,4 @@
-"""Result and relationship models for VERITY Transaction Matching Subsystem.
+"""Result and relationship models for FinSync Transaction Matching Subsystem.
 
 Represents candidate matching relationships without making final financial reconciliation conclusions.
 """

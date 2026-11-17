@@ -1,4 +1,4 @@
-"""Deterministic signal extraction for the VERITY AI Finance Controller."""
+"""Deterministic signal extraction for the FinSync finance controller."""
 
 from __future__ import annotations
 

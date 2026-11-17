@@ -18,6 +18,7 @@ class IngestionService:
     """Central service coordinating multimodal adapters for evidence normalization."""
 
     def __init__(self, adapters: Optional[List[BaseIngestionAdapter]] = None) -> None:
+        """Creates the file-reading stage with one adapter per file type (CSV, PDF, image, text)."""
         self.adapters = adapters or [
             BankCSVAdapter(),
             TextMessageAdapter(),

@@ -113,6 +113,7 @@ class CombinationMatcher:
     def _is_linked_component(
         cls, claim: Claim, txn: Transaction, claim_ent: Optional[str], cfg: MatchConfig
     ) -> bool:
+        """True when a bank line points at this claim (same reference, invoice number, payer or name), so it may be part of a split payment."""
         _, matched, conflicting, _ = PairwiseSignalEvaluator.evaluate_pair(claim, txn, claim_ent, cfg)
         if conflicting:
             return False

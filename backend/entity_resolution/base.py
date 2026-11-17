@@ -26,6 +26,7 @@ class DeterministicEntityResolver(BaseEntityResolver):
     """Deterministic in-memory entity resolver based on exact and normalized alias matching."""
 
     def __init__(self, entities: Optional[List[Entity]] = None) -> None:
+        """Creates the resolver with the people and businesses known so far."""
         self.entities: Dict[str, Entity] = {}
         if entities:
             for ent in entities:

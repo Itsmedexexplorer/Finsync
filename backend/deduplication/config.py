@@ -1,4 +1,4 @@
-"""Configuration parameters for VERITY Cross-Modal Deduplication Engine."""
+"""Configuration parameters for FinSync Cross-Modal Deduplication Engine."""
 
 from __future__ import annotations
 

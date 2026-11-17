@@ -90,6 +90,7 @@ class Transaction(BaseModel):
     @field_validator("amount")
     @classmethod
     def validate_amount_positive(cls, v: float) -> float:
+        """A bank transaction always moves a positive amount; the direction says in or out."""
         if v <= 0:
             raise ValueError("Transaction amount must be strictly greater than 0")
         return round(v, 2)

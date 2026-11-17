@@ -1,4 +1,4 @@
-"""Deterministic Explainability Engine and Grounded Question Answering for VERITY."""
+"""Deterministic Explainability Engine and Grounded Question Answering for FinSync."""
 
 from __future__ import annotations
 

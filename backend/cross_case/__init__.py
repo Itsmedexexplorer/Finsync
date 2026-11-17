@@ -1,4 +1,4 @@
-"""Cross-Case Intelligence & Counterparty Memory Subsystem (Day 18).
+"""Cross-Case Intelligence & Counterparty Memory Subsystem.
 
 Provides institutional memory, cross-case entity history, reference reuse detection,
 and recurring discrepancy pattern analysis across historical financial cases.

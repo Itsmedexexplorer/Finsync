@@ -1,4 +1,4 @@
-"""VERITY Financial Case Portfolio & Operations Intelligence Domain Models (Day 15).
+"""FinSync Financial Case Portfolio & Operations Intelligence Domain Models.
 
 Provides strongly typed models for portfolio cases, assignments, SLA state,
 workload analytics, exposure tracking, filtering, sorting, and pagination.
@@ -224,12 +224,14 @@ class PortfolioWorkload(BaseModel):
 
 # API Request / Response Models
 class AssignCaseRequest(BaseModel):
+    """Request body for: assign case."""
     reviewer_id: str
     reviewer_name: Optional[str] = None
     assigned_by: str = "controller_admin"
 
 
 class ReassignCaseRequest(BaseModel):
+    """Request body for: reassign case."""
     new_reviewer_id: str
     new_reviewer_name: Optional[str] = None
     reassigned_by: str = "controller_admin"
@@ -237,5 +239,6 @@ class ReassignCaseRequest(BaseModel):
 
 
 class UnassignCaseRequest(BaseModel):
+    """Request body for: unassign case."""
     unassigned_by: str = "controller_admin"
     reason: Optional[str] = None

@@ -1,4 +1,4 @@
-"""Unified Cross-Modal Deduplication Service for VERITY.
+"""Unified Cross-Modal Deduplication Service for FinSync.
 
 Orchestrates multi-signal evidence clustering, content deduplication, and event grouping.
 """
@@ -25,6 +25,7 @@ class DeduplicationService(BaseDeduplicator):
     """Central service managing cross-modal evidence deduplication and event grouping."""
 
     def __init__(self, config: Optional[DeduplicationConfig] = None) -> None:
+        """Creates the duplicate stage with its settings."""
         self.config = config or DeduplicationConfig()
         self.engine = DeduplicationEngine(config=self.config)
 

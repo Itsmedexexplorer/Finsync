@@ -1,4 +1,4 @@
-"""In-memory Entity Registry repository for VERITY.
+"""In-memory Entity Registry repository for FinSync.
 
 Maintains normalized lookup indexes for official tax IDs, UPI VPAs, phone numbers,
 canonical names, and trade aliases.
@@ -15,6 +15,7 @@ class EntityRegistry:
     """Repository and indexed storage for known business and individual entities."""
 
     def __init__(self, entities: Optional[List[Entity]] = None) -> None:
+        """Creates a registry of known people and businesses, indexed by GSTIN, PAN, UPI id, phone and name."""
         self.entities: Dict[str, Entity] = {}
         self.tax_id_index: Dict[str, str] = {}       # normalized tax_id -> entity_id
         self.upi_index: Dict[str, str] = {}          # normalized upi_vpa -> entity_id

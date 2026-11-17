@@ -1,4 +1,9 @@
-"""Optional AI Explainer and Strict Fact-Checking Validator for VERITY Controller."""
+"""Fact checker for written answers, and an optional AI explainer that FinSync does NOT use.
+
+FinSync's answers come from fixed templates filled with the check's own numbers. The
+validator below checks that every amount in an answer really appears in the check's records.
+The optional AI part is switched off and never called.
+"""
 
 from __future__ import annotations
 

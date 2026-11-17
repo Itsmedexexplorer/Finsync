@@ -1,4 +1,4 @@
-"""Unified Contradiction Detection Service for VERITY.
+"""Unified Contradiction Detection Service for FinSync.
 
 Orchestrates multi-signal contradiction rules across Claims, Transactions, Deduplication Groups,
 and Match Relationships.
@@ -23,6 +23,7 @@ class ContradictionDetectionService(BaseContradictionDetector):
     """Central service managing financial contradiction detection."""
 
     def __init__(self, config: Optional[ContradictionConfig] = None) -> None:
+        """Creates the contradiction stage with its settings."""
         self.config = config or ContradictionConfig()
         self.detector = ContradictionDetector(config=self.config)
 

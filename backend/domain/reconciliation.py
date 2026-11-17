@@ -1,6 +1,6 @@
 """Domain model for reconciliation conclusions and results.
 
-Principle: Reconciliation is the Conclusion synthesized by VERITY after analyzing
+Principle: Reconciliation is the Conclusion synthesized by FinSync after analyzing
 Evidence, evaluating Claims, resolving Entities, and matching Transactions.
 Evidence != Claim != Conclusion.
 """

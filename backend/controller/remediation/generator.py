@@ -1,4 +1,4 @@
-"""Deterministic Fact-Grounded Notice and Follow-Up Draft Generator (Day 19).
+"""Deterministic Fact-Grounded Notice and Follow-Up Draft Generator.
 
 Strict Invariants:
 1. Purely grounded in authoritative ReconciliationResult and FinancialTruthReport records.

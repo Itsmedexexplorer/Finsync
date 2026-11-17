@@ -44,6 +44,7 @@ def _cells(line: str) -> List[Tuple[int, int, str]]:
 
 
 def _to_csv(header: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
+    """Writes a header and rows as CSV text."""
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(header)
@@ -52,6 +53,7 @@ def _to_csv(header: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
 
 
 def _amount(text: str) -> Optional[float]:
+    """An amount from text such as '1,25,000.00' as a number, or None."""
     try:
         return float(re.sub(r"[^\d.]", "", text))
     except ValueError:
@@ -61,6 +63,7 @@ def _amount(text: str) -> Optional[float]:
 # --- 1. Column reader ---------------------------------------------------------------
 
 def _find_header(lines: List[str]) -> Optional[Tuple[int, List[Tuple[int, int, str]]]]:
+    """The line of a statement that holds the column names (it has a date column and an amount column)."""
     for idx, line in enumerate(lines):
         cells = _cells(line)
         if len(cells) < 3:
@@ -72,6 +75,7 @@ def _find_header(lines: List[str]) -> Optional[Tuple[int, List[Tuple[int, int, s
 
 
 def read_columns(text: str) -> Optional[str]:
+    """Column reader: places every value under the column header it sits below, joins wrapped narration lines, and returns CSV text."""
     lines = text.splitlines()
     found = _find_header(lines)
     if not found:
@@ -85,6 +89,7 @@ def read_columns(text: str) -> Optional[str]:
     ]
 
     def column_for(start: int, end: int) -> int:
+        """The column whose header overlaps (or is closest to) the text at these positions."""
         best, best_gap = 0, None
         for i, (hs, he, _) in enumerate(header_cells):
             gap = 0 if (start < he + 1 and end > hs - 1) else min(abs(start - he), abs(end - hs))
@@ -124,6 +129,7 @@ _CREDIT_WORDS = re.compile(r"\b(?:cr|credit|deposit|received|by\s+transfer|salar
 
 
 def read_lines(text: str) -> Optional[str]:
+    """Line reader for statements without clear columns: each line that starts with a date and ends with amounts is a row, and the running balance tells whether money came in or went out."""
     opening = _OPENING.search(text)
     prev_balance = _amount(opening.group("amt")) if opening else None
     rows: List[List[str]] = []
@@ -167,6 +173,7 @@ def read_lines(text: str) -> Optional[str]:
 
 
 def looks_like_statement(text: str, source_name: str = "") -> bool:
+    """True when the text or file name says this is a bank statement."""
     name = source_name.lower()
     return bool(_STATEMENT_WORDS.search(text)) or "statement" in name or "bank" in name or "passbook" in name
 

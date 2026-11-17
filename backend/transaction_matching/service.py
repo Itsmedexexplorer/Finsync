@@ -1,4 +1,4 @@
-"""Unified Transaction Matching Service for VERITY.
+"""Unified Transaction Matching Service for FinSync.
 
 Orchestrates multi-signal matching between extracted Claims and verified ledger Transactions
 leveraging Entity Resolution context.
@@ -30,6 +30,7 @@ class TransactionMatchingService(BaseTransactionMatcher):
         config: Optional[MatchConfig] = None,
         entity_service: Optional[EntityResolutionService] = None,
     ) -> None:
+        """Creates the matching stage with its settings and the name-linking service."""
         self.config = config or MatchConfig()
         self.matcher = TransactionMatcher(config=self.config)
         self.entity_service = entity_service

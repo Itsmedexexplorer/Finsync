@@ -1,4 +1,4 @@
-"""Reporting and Explainability subsystem for VERITY."""
+"""Reporting and Explainability subsystem for FinSync."""
 
 from backend.reporting.explainability import ExplainabilityEngine
 from backend.reporting.models import (

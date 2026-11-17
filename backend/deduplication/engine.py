@@ -1,4 +1,4 @@
-"""Deterministic Cross-Modal Deduplication Engine for VERITY.
+"""Deterministic Cross-Modal Deduplication Engine for FinSync.
 
 Clusters and groups multimodal financial evidence into canonical event groups without
 deleting raw evidence or falsely merging distinct financial events.
@@ -27,6 +27,7 @@ class DeduplicationEngine:
     """Multi-phase cross-modal evidence and financial event deduplicator."""
 
     def __init__(self, config: Optional[DeduplicationConfig] = None) -> None:
+        """Creates the duplicate finder with its settings."""
         self.config = config or DeduplicationConfig()
 
     def deduplicate(
@@ -79,7 +80,7 @@ class DeduplicationEngine:
                 assigned_evidence_ids.update(ev_ids)
 
         # -----------------------------------------------------------------
-        # Phase 2: Match Relationship Event Grouping (Day 5 Links)
+        # Phase 2: Match Relationship Event Grouping (Links)
         # -----------------------------------------------------------------
         for rel in relationships_list:
             # Gather members

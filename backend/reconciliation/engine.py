@@ -1,4 +1,4 @@
-"""Deterministic Financial Reconciliation Engine for VERITY.
+"""Deterministic Financial Reconciliation Engine for FinSync.
 
 Synthesizes final, verified financial conclusions by integrating Claims, Transactions,
 Resolved Entities, Match Relationships, Deduplication Groups, and Discrepancies.
@@ -32,6 +32,7 @@ class ReconciliationEngine:
         config: Optional[ReconciliationConfig] = None,
         provenance_tracker: Optional[ProvenanceTracker] = None,
     ) -> None:
+        """Creates the final-decision stage with its tolerance settings."""
         self.config = config or ReconciliationConfig()
         self.tracker = provenance_tracker or ProvenanceTracker()
 
@@ -69,7 +70,7 @@ class ReconciliationEngine:
         results: List[ReconciliationResult] = []
 
         # -------------------------------------------------------------
-        # Case A: Event Groups provided via Day 6 Deduplication
+        # Case A: Event Groups provided via Deduplication
         # -------------------------------------------------------------
         if dedup_list:
             for grp in dedup_list:
@@ -283,7 +284,7 @@ class ReconciliationEngine:
         transactions: List[Transaction],
         counterparty: Optional[Entity] = None,
     ) -> ReconciliationRecord:
-        """Backward-compatible interface for Day 1 case evaluation."""
+        """Backward-compatible interface for case evaluation."""
         entity_map = {c.id: counterparty.id for c in claims} if counterparty else {}
         batch_res = self.reconcile(
             claims=claims,

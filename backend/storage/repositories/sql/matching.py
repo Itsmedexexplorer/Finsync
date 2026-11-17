@@ -13,6 +13,7 @@ class SQLMatchRepository(MatchRepository):
     """SQLite/SQL repository for Match Relationship records."""
 
     def create(self, record: MatchRelationshipRecord) -> MatchRelationshipRecord:
+        """Saves one match between claims and bank lines using SQL."""
         sql = """
         INSERT INTO match_relationships (
             id, case_id, relationship_type, status, source_claim_ids,
@@ -52,16 +53,19 @@ class SQLMatchRepository(MatchRepository):
         return record
 
     def create_batch(self, records: List[MatchRelationshipRecord]) -> List[MatchRelationshipRecord]:
+        """Saves many match between claims and bank lines records in one go using SQL."""
         for r in records:
             self.create(r)
         return records
 
     def list_by_case(self, case_id: str) -> List[MatchRelationshipRecord]:
+        """Every match between claims and bank lines that belongs to one check using SQL."""
         sql = "SELECT * FROM match_relationships WHERE case_id = ? ORDER BY created_at ASC;"
         cursor = self.conn.execute(sql, (case_id,))
         return [self._row_to_record(r) for r in cursor.fetchall()]
 
     def _row_to_record(self, row: dict) -> MatchRelationshipRecord:
+        """Turns one database row into a match between claims and bank lines object."""
         return MatchRelationshipRecord(
             id=row["id"],
             case_id=row["case_id"],

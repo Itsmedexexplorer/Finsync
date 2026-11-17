@@ -19,6 +19,7 @@ class DuplicateGroup:
         claim_ids: Optional[List[str]] = None,
         confidence: float = 1.0,
     ) -> None:
+        """A set of records that describe the same payment; one of them is kept as the primary."""
         self.canonical_reference = canonical_reference
         self.primary_transaction = primary_transaction
         self.evidence_ids = evidence_ids or []

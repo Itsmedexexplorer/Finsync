@@ -1,4 +1,4 @@
-"""Compact structured context builder for Controller AI and explainability."""
+"""Builds the compact set of facts about a check that the plain-English answers are made from."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ def build_controller_ai_context(
     result: CaseProcessingResult,
     decision: ControllerDecision,
 ) -> Dict[str, Any]:
-    """Extracts a sanitized, grounded facts dictionary for AI explanation and validation."""
+    """The facts of a check (amounts, statuses, references) used to build answers and to check them."""
     fin_sum = result.financial_summary or {}
     
     # Collect all known numbers/amounts in the deterministic facts

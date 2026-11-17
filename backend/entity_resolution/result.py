@@ -1,4 +1,4 @@
-"""Result and candidate models for VERITY Entity Resolution Subsystem."""
+"""Result and candidate models for FinSync Entity Resolution Subsystem."""
 
 from __future__ import annotations
 

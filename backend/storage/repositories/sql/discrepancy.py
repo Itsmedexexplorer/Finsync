@@ -13,6 +13,7 @@ class SQLDiscrepancyRepository(DiscrepancyRepository):
     """SQLite/SQL repository for Discrepancy records."""
 
     def create(self, record: DiscrepancyRecord) -> DiscrepancyRecord:
+        """Saves one discrepancy (something that did not add up) using SQL."""
         sql = """
         INSERT INTO discrepancies (
             id, case_id, discrepancy_type, severity, message, expected_value,
@@ -50,11 +51,13 @@ class SQLDiscrepancyRepository(DiscrepancyRepository):
         return record
 
     def create_batch(self, records: List[DiscrepancyRecord]) -> List[DiscrepancyRecord]:
+        """Saves many discrepancy (something that did not add up) records in one go using SQL."""
         for r in records:
             self.create(r)
         return records
 
     def list_by_case(self, case_id: str) -> List[DiscrepancyRecord]:
+        """Every discrepancy (something that did not add up) that belongs to one check using SQL."""
         sql = "SELECT * FROM discrepancies WHERE case_id = ? ORDER BY created_at ASC;"
         cursor = self.conn.execute(sql, (case_id,))
         return [self._row_to_record(r) for r in cursor.fetchall()]
@@ -72,6 +75,7 @@ class SQLDiscrepancyRepository(DiscrepancyRepository):
         return [self._row_to_record(r) for r in cursor.fetchall()]
 
     def _row_to_record(self, row: dict) -> DiscrepancyRecord:
+        """Turns one database row into a discrepancy (something that did not add up) object."""
         return DiscrepancyRecord(
             id=row["id"],
             case_id=row["case_id"],

@@ -1,4 +1,4 @@
-"""Input and execution models for VERITY End-to-End Case Processing Pipeline."""
+"""Input and execution models for FinSync End-to-End Case Processing Pipeline."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from backend.domain.transaction import Transaction
 
 
 class PipelineStage(str, Enum):
-    """The 8 sequential stages of the VERITY Finance Controller Pipeline."""
+    """The 8 sequential stages of the FinSync Finance Controller Pipeline."""
     INGESTION = "INGESTION"
     EXTRACTION = "EXTRACTION"
     ENTITY_RESOLUTION = "ENTITY_RESOLUTION"

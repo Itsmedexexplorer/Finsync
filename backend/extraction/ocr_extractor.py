@@ -43,13 +43,24 @@ _RUPEE_LOOKALIKE = re.compile(r"(?<![\w₹])[%~¥Z=?«<&€£]\s(?=\d{1,3}(?:,\d
 
 
 def _env_enabled() -> bool:
+    """True unless OCR was switched off with VERITY_OCR_ENABLED=false."""
     return os.getenv("VERITY_OCR_ENABLED", "true").strip().lower() in ("true", "1", "yes")
 
 
 @lru_cache(maxsize=1)
 def _tesseract_ready() -> bool:
+    """True when the Tesseract program is installed and can be called."""
     try:
         import pytesseract  # noqa: WPS433 (optional dependency)
+
+        # Where the Tesseract program is: TESSERACT_CMD if set, else the Windows
+        # installer's default folder (it does not add itself to PATH), else PATH.
+        custom = os.getenv("TESSERACT_CMD")
+        win_default = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+        if custom:
+            pytesseract.pytesseract.tesseract_cmd = custom
+        elif os.name == "nt" and os.path.exists(win_default):
+            pytesseract.pytesseract.tesseract_cmd = win_default
 
         pytesseract.get_tesseract_version()
         return True
@@ -193,6 +204,7 @@ def fix_slash_in_amount(word: str) -> str:
 
 
 def _fix_rupee_word(word: str, glyph: Optional[Image.Image]) -> str:
+    """Repairs one word where Tesseract misread the rupee sign: a lookalike symbol becomes ₹; a leading digit becomes ₹ only if its shape looks like ₹ (or, with no shape available, if Indian digit grouping requires it)."""
     m = _AMOUNT_WORD.match(word)
     if not m:
         return word
@@ -244,6 +256,7 @@ _HAS_AMOUNT = re.compile(r"(?:₹|(?<![A-Za-z])(?:Rs\.?|INR))\s?\d|\b\d{1,3}(?:,
 
 
 def _ocr_pass(prepared: Image.Image, config: str, timeout: int) -> str:
+    """Runs Tesseract once on a prepared image, repairs amounts word by word (7 read as '/', rupee sign) and returns the text line by line."""
     import pytesseract  # noqa: WPS433
 
     data = pytesseract.image_to_data(
@@ -269,6 +282,7 @@ def _ocr_pass(prepared: Image.Image, config: str, timeout: int) -> str:
         per_line[w["line"]] = per_line.get(w["line"], 0) + 1
 
     def money_shaped(w: Dict[str, Any]) -> bool:
+        """True for words that look like an amount and start with a digit, the only ones whose first character needs a shape check."""
         t = w["text"]
         if not (_AMOUNT_WORD.match(t) and t[0].isdigit()):
             return False
@@ -311,18 +325,22 @@ class OCRExtractor(BaseExtractor):
         text_extractor: Optional[TextClaimExtractor] = None,
         pdf_extractor: Optional[PDFDocumentExtractor] = None,
     ) -> None:
+        """Creates the OCR reader; the text it reads is passed to the normal text and PDF rules."""
         self.text_extractor = text_extractor or TextClaimExtractor()
         self.pdf_extractor = pdf_extractor or PDFDocumentExtractor()
 
     @property
     def provider_name(self) -> str:
+        """Short name of this reader; it is recorded on every claim it makes, so each result can be traced to its rule."""
         return "tesseract_ocr"
 
     def can_extract(self, evidence: Evidence) -> bool:
+        """True when this reader handles this kind of evidence."""
         meta = evidence.metadata or {}
         return bool(meta.get("image_bytes_b64") or meta.get("page_images_b64"))
 
     def is_available(self) -> bool:
+        """True when OCR is switched on and Tesseract is installed."""
         return ocr_available()
 
     def extract(
@@ -330,6 +348,7 @@ class OCRExtractor(BaseExtractor):
         evidence: Evidence,
         context: Optional[Dict[str, Any]] = None,
     ) -> ExtractionResult:
+        """Reads the image (or scanned PDF pages) with OCR, then extracts claims from the text with the same fixed rules as typed text. Claims read by OCR get slightly lower confidence (×0.9)."""
         if not self.is_available():
             return ExtractionResult.create_failure(
                 evidence_id=evidence.id,
@@ -402,6 +421,7 @@ class OCRExtractor(BaseExtractor):
         )
 
     def _read_text(self, evidence: Evidence) -> str:
+        """The OCR text of an image or of every page image of a scanned PDF."""
         meta = evidence.metadata
         if meta.get("image_bytes_b64"):
             return read_image_text(base64.b64decode(meta["image_bytes_b64"]))

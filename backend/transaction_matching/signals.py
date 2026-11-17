@@ -18,14 +18,17 @@ from backend.transaction_matching.config import MatchConfig
 class PairwiseSignalEvaluator:
     """Evaluates multi-signal correlation between a source Claim and a target Transaction."""
 
-    WEIGHT_EXACT_REFERENCE = 1.00
-    WEIGHT_EXACT_INVOICE_NUMBER = 1.00
-    WEIGHT_EXACT_ENTITY_MATCH = 0.90
-    WEIGHT_EXACT_AMOUNT_MATCH = 0.80
-    WEIGHT_DATE_PROXIMITY = 0.70
-    WEIGHT_PAYMENT_METHOD = 0.60
-    WEIGHT_NARRATION_KEYWORD = 0.55
-    WEIGHT_PARTIAL_AMOUNT = 0.50
+    # Fixed weight of each signal: how strongly it alone shows that a claim and a bank line
+    # are the same payment. A UTR / UPI reference is unique to one transfer, so it is the
+    # strongest; a matching amount or date can happen by chance, so it counts for less.
+    WEIGHT_EXACT_REFERENCE = 1.00        # same UTR / UPI reference on both sides
+    WEIGHT_EXACT_INVOICE_NUMBER = 1.00   # the invoice number appears in the bank narration
+    WEIGHT_EXACT_ENTITY_MATCH = 0.90     # same payer, linked by GSTIN, PAN, UPI id or phone
+    WEIGHT_EXACT_AMOUNT_MATCH = 0.80     # amounts equal to the paisa
+    WEIGHT_DATE_PROXIMITY = 0.70         # dates within the tolerance (7 days by default)
+    WEIGHT_PAYMENT_METHOD = 0.60         # same rail, e.g. UPI in the message and UPI in the bank
+    WEIGHT_NARRATION_KEYWORD = 0.55      # the person's name appears in the bank narration
+    WEIGHT_PARTIAL_AMOUNT = 0.50         # bank amount is smaller than claimed (part payment)
 
     @classmethod
     def evaluate_pair(
@@ -140,12 +143,15 @@ class PairwiseSignalEvaluator:
             final_score = 0.0
             explanation = "No matching financial signals identified."
         else:
-            # Multi-signal reinforcement
+            # Score = the strongest signal, plus 0.04 for every extra signal that agrees,
+            # capped at 1.0. Example: reference (1.00) + amount + method → 1.00.
+            # Example: amount (0.80) + date + method → 0.80 + 0.08 = 0.88.
             max_score = max(signal_scores)
             bonus = 0.04 * (len(signal_scores) - 1) if len(signal_scores) > 1 else 0.0
             final_score = min(1.0, max_score + bonus)
 
-            # Penalize heavily if conflicting signals present
+            # Each conflict (wrong direction, different payer, date months away) costs 0.35,
+            # so a pair with a conflict cannot reach "matched" (0.85) on its own.
             if conflicting_signals:
                 final_score = max(0.05, final_score - (0.35 * len(conflicting_signals)))
 

@@ -1,4 +1,4 @@
-"""Deterministic Multi-Signal Entity Matching and Scoring Engine for VERITY.
+"""Deterministic Multi-Signal Entity Matching and Scoring Engine for FinSync.
 
 Implements transparent, explainable scoring based on official tax IDs, UPI VPAs,
 phone numbers, and normalized name variants. Never collapses ambiguity or ignores conflicts.

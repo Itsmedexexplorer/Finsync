@@ -1,4 +1,4 @@
-"""API Package for VERITY."""
+"""API Package for FinSync."""
 
 from backend.api.app import app, create_app
 

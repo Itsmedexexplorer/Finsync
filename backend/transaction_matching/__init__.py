@@ -1,4 +1,4 @@
-"""Transaction Matching subsystem for VERITY."""
+"""Transaction Matching subsystem for FinSync."""
 
 from backend.transaction_matching.base import BaseTransactionMatcher, MatchCandidate
 from backend.transaction_matching.combiner import CombinationMatcher

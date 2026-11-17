@@ -1,4 +1,4 @@
-"""Unified AI Finance Controller Service for VERITY."""
+"""Finance controller for FinSync: decides each check's priority, next actions and plain-English answers with fixed rules."""
 
 from __future__ import annotations
 

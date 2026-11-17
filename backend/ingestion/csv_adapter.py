@@ -1,4 +1,4 @@
-"""Bank CSV Ingestion Adapter for VERITY.
+"""Bank CSV Ingestion Adapter for FinSync.
 
 Ingests heterogeneous Indian bank statement CSVs/TSVs, normalizes column aliases,
 preserves raw row contents, and provides row-level error reporting.
@@ -23,10 +23,12 @@ class BankCSVAdapter(BaseIngestionAdapter):
 
     @property
     def supported_modalities(self) -> List[EvidenceModality]:
+        """The kinds of evidence this adapter produces (for example bank statement, invoice, screenshot, chat)."""
         return [EvidenceModality.BANK_STATEMENT]
 
     @property
     def supported_extensions(self) -> List[str]:
+        """The file extensions this adapter accepts."""
         return [".csv", ".tsv"]
 
     # Canonical column synonym mappings for Indian banking exports
@@ -54,6 +56,7 @@ class BankCSVAdapter(BaseIngestionAdapter):
         source_type: Optional[EvidenceSourceType] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> IngestionResult:
+        """Reads the file from disk (checking it exists and is not empty) and passes its content to ingest_payload."""
         path = Path(file_path)
         if not path.exists():
             return IngestionResult.create_failure(
@@ -105,6 +108,7 @@ class BankCSVAdapter(BaseIngestionAdapter):
         source_type: Optional[EvidenceSourceType] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> IngestionResult:
+        """Reads a bank statement CSV: skips the bank's header lines, finds the columns by meaning and makes one evidence item per row."""
         if isinstance(raw_content, bytes):
             try:
                 text_content = raw_content.decode("utf-8-sig")
@@ -255,6 +259,7 @@ class BankCSVAdapter(BaseIngestionAdapter):
 
     @classmethod
     def _normalize_header(cls, header: str) -> str:
+        """A column name in comparable form: lower case, units like '(INR)' removed, punctuation turned into spaces."""
         text = re.sub(r"\([^)]*\)", " ", header.lower())  # drop "(INR)", "(₹)", "(Dr/Cr)"
         text = cls._UNIT_WORDS.sub(" ", text)
         return "".join(ch for ch in text if ch.isalnum())

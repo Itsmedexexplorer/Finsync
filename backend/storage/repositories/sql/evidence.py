@@ -12,6 +12,7 @@ class SQLEvidenceRepository(EvidenceRepository):
     """SQLite/SQL repository for Evidence."""
 
     def create(self, record: EvidenceRecord) -> EvidenceRecord:
+        """Saves one evidence item (one uploaded file or statement row) using SQL."""
         sql = """
         INSERT INTO evidence (
             id, case_id, modality, source_name, source_type, sha256_hash, summary, raw_payload, created_at
@@ -35,11 +36,13 @@ class SQLEvidenceRepository(EvidenceRepository):
         return record
 
     def create_batch(self, records: List[EvidenceRecord]) -> List[EvidenceRecord]:
+        """Saves many evidence item (one uploaded file or statement row) records in one go using SQL."""
         for r in records:
             self.create(r)
         return records
 
     def get(self, evidence_id: str, case_id: Optional[str] = None) -> Optional[EvidenceRecord]:
+        """Loads one evidence item (one uploaded file or statement row) by its id using SQL; None when not found."""
         if case_id:
             sql = "SELECT * FROM evidence WHERE id = ? AND case_id = ?;"
             cursor = self.conn.execute(sql, (evidence_id, case_id))
@@ -52,11 +55,13 @@ class SQLEvidenceRepository(EvidenceRepository):
         return self._row_to_record(row)
 
     def list_by_case(self, case_id: str) -> List[EvidenceRecord]:
+        """Every evidence item (one uploaded file or statement row) that belongs to one check using SQL."""
         sql = "SELECT * FROM evidence WHERE case_id = ? ORDER BY created_at ASC;"
         cursor = self.conn.execute(sql, (case_id,))
         return [self._row_to_record(r) for r in cursor.fetchall()]
 
     def count_by_case(self, case_id: str) -> int:
+        """How many evidence item (one uploaded file or statement row) records one check has."""
         sql = "SELECT COUNT(*) AS c FROM evidence WHERE case_id = ?;"
         cursor = self.conn.execute(sql, (case_id,))
         row = cursor.fetchone()
@@ -72,6 +77,7 @@ class SQLEvidenceRepository(EvidenceRepository):
         return [self._row_to_record(r) for r in cursor.fetchall()]
 
     def _row_to_record(self, row: dict) -> EvidenceRecord:
+        """Turns one database row into a evidence item (one uploaded file or statement row) object."""
         return EvidenceRecord(
             id=row["id"],
             case_id=row["case_id"],

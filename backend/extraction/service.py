@@ -1,4 +1,7 @@
-"""Unified Extraction Service orchestrating deterministic-first claims extraction and AI fallback."""
+"""Reading stage: picks the right fixed-rule reader for each file (bank row, typed text, PDF, OCR for images).
+
+An optional AI reader can be plugged in, but it is switched off in FinSync (provider MOCK),
+so every result comes from the fixed rules and Tesseract OCR."""
 
 from __future__ import annotations
 
@@ -15,7 +18,7 @@ from backend.extraction.text_extractor import TextClaimExtractor
 
 
 class ExtractionService:
-    """Central extraction service coordinating deterministic parsers and AI models."""
+    """Chooses the reader for each evidence item and returns the claims it found."""
 
     def __init__(
         self,
@@ -25,6 +28,7 @@ class ExtractionService:
         ai_provider: Optional[AIExtractionProvider] = None,
         ocr_extractor: Optional[OCRExtractor] = None,
     ) -> None:
+        """Creates the reading stage with its readers: bank rows, typed text, PDFs and OCR for images."""
         self.bank_extractor = bank_extractor or BankCSVExtractor()
         self.text_extractor = text_extractor or TextClaimExtractor()
         self.pdf_extractor = pdf_extractor or PDFDocumentExtractor()
@@ -58,7 +62,7 @@ class ExtractionService:
             if pdf_result.status == ExtractionStatus.SUCCESS:
                 return pdf_result
             if pdf_result.status == ExtractionStatus.REQUIRES_VISION_OR_OCR:
-                # If multimodal AI is configured, try it; otherwise return requires vision
+                # An optional AI reader would be tried here; it is switched off in FinSync, so this is skipped
                 if use_ai_fallback and self.ai_provider.can_extract(evidence):
                     ai_res = self.ai_provider.extract(evidence, context)
                     if ai_res.status != ExtractionStatus.PROVIDER_UNAVAILABLE:
@@ -83,7 +87,7 @@ class ExtractionService:
         if text_result.status == ExtractionStatus.SUCCESS:
             return text_result
 
-        # If deterministic text did not find claims or had ambiguity, check AI fallback
+        # Optional AI fallback (switched off in FinSync, so this is skipped)
         if (
             use_ai_fallback
             and text_result.status == ExtractionStatus.NO_CLAIMS_FOUND

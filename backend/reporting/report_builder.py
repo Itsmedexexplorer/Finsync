@@ -1,4 +1,4 @@
-"""Report Builder for VERITY Financial Truth Reports."""
+"""Report Builder for FinSync Financial Truth Reports."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ from backend.transaction_matching.result import MatchRelationship
 
 
 class FinancialTruthReportBuilder:
-    """Transforms Day 8 reconciliation outputs and domain artifacts into an explainable Financial Truth Report."""
+    """Transforms reconciliation outputs and domain artifacts into an explainable Financial Truth Report."""
 
     @classmethod
     def build_report(

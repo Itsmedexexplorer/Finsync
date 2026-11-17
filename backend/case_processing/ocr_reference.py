@@ -25,6 +25,7 @@ _MIN_OCR_LEN = 11    # what was read from the photo, which may have lost one cha
 
 
 def _norm(value: Optional[str]) -> str:
+    """Upper case, letters and digits only, so references compare reliably."""
     return re.sub(r"[^A-Z0-9]", "", (value or "").upper())
 
 
@@ -44,6 +45,7 @@ def _within_one_edit(a: str, b: str) -> bool:
 
 
 def snap_ocr_references(claims: Sequence[Claim], transactions: Sequence[Transaction]) -> List[Claim]:
+    """Replaces a reference read from a photo with the bank's reference when they differ by one character and only one bank line is that close. Typed text is never changed."""
     bank_refs = {_norm(t.bank_reference): t.bank_reference for t in transactions if len(_norm(t.bank_reference)) >= _MIN_LEN}
     out: List[Claim] = []
     for claim in claims:

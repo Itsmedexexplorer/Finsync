@@ -1,4 +1,4 @@
-"""Result and group models for VERITY Cross-Modal Deduplication Subsystem.
+"""Result and group models for FinSync Cross-Modal Deduplication Subsystem.
 
 Represents event grouping and content deduplication without destroying underlying evidence.
 """

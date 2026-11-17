@@ -85,10 +85,13 @@ frontend/   web app (index.html, styles.css, app.js)
 backend/    FastAPI server and the matching logic
 supabase/   sign-in settings and email templates
 tests/      automated tests
-docs/       technical notes
+docs/       technical notes, including CODE_GUIDE.md (how the code works)
 ```
 
 ## Run locally
+
+Step-by-step instructions for Windows, macOS and Linux are in **[RUN_ON_YOUR_PC.md](RUN_ON_YOUR_PC.md)**.
+How the code is organised is explained in **[docs/CODE_GUIDE.md](docs/CODE_GUIDE.md)**.
 
 You need **Python 3.10 or newer**.
 

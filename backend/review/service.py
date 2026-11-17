@@ -1,4 +1,4 @@
-"""Unified Human Review and Case Investigation Service for VERITY."""
+"""Unified Human Review and Case Investigation Service for FinSync."""
 
 from __future__ import annotations
 
@@ -47,6 +47,7 @@ class ReviewService:
     """Thread-safe orchestration service managing review lifecycles, action tasks, notes, and audit chains."""
 
     def __init__(self) -> None:
+        """Starts with no reviews loaded; the workspace loads saved ones."""
         self._reviews: Dict[str, ReviewRecord] = {}
         self._audit_chains: Dict[str, List[AuditEvent]] = {}
         self._lock = threading.Lock()
