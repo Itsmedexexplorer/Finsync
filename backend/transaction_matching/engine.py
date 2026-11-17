@@ -47,9 +47,22 @@ class TransactionMatcher:
         # Evaluate pairwise scores for all candidate pairs
         pairwise_candidates: List[Tuple[float, Claim, Transaction, List[str], List[str], str]] = []
 
+        # A claim whose reference (UTR / UPI ID) is in the statement belongs to that line only;
+        # it must never be paired with a different line just because the amount is the same.
+        def _ref(x: Optional[str]) -> str:
+            return "".join(ch for ch in (x or "").upper() if ch.isalnum())
+
+        bank_refs = {_ref(t.bank_reference) for t in transactions} - {""}
+
+        def points_elsewhere(c: Claim, t: Transaction) -> bool:
+            cr = _ref(c.reference_id_hint)
+            return bool(cr) and cr in bank_refs and _ref(t.bank_reference) != cr
+
         for c in claims:
             c_ent = entity_map.get(c.id)
             for t in transactions:
+                if points_elsewhere(c, t):
+                    continue
                 score, matched_sigs, conf_sigs, explanation = PairwiseSignalEvaluator.evaluate_pair(
                     claim=c,
                     transaction=t,
@@ -221,7 +234,7 @@ class TransactionMatcher:
         for c in remaining_claims:
             c_ent = entity_map.get(c.id)
             for t in remaining_txns:
-                if t.id in matched_txn_ids:
+                if t.id in matched_txn_ids or points_elsewhere(c, t):
                     continue
                 score, ms, cs, exp = PairwiseSignalEvaluator.evaluate_pair(c, t, c_ent, self.config)
                 # A smaller amount alone isn't evidence; the bank line must also point to this claim,

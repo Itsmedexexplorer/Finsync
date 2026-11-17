@@ -381,6 +381,15 @@ class TextClaimExtractor(BaseExtractor):
         if metadata.get("sender"):
             return metadata["sender"]
 
+        # A payment receipt shows both "Paid to <you>" and "From <payer>". FinSync reads a
+        # receipt as money received, so the payer named in the "From" field is the party.
+        if re.search(r"(?im)^\s*(?:paid|sent)\s+to\b", text):
+            frm = re.search(
+                r"(?im)^\s*from\s*:?\s*(?:\n\s*)?([A-Za-z][A-Za-z.&']*(?:[ \t]+[A-Za-z][A-Za-z.&']*){0,3})\s*$", text
+            )
+            if frm:
+                return frm.group(1).strip()
+
         # Search for "Paid to: Name" or "from Name"
         m = re.search(r"(?:received from|paid to|sent to|billed to|from)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)", text, re.IGNORECASE)
         if m:

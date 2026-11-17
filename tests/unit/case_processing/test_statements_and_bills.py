@@ -278,3 +278,29 @@ def test_conflicting_claims_for_one_payment_are_not_added_up(client):
     )
     assert data["status"] == "CONTRADICTED"
     assert data["financial_summary"]["claimed_amount"] == 40000.0
+
+
+def test_payment_receipt_is_named_after_the_payer():
+    from backend.extraction.text_extractor import TextClaimExtractor
+
+    t = TextClaimExtractor()
+    text = "Payment Successful\nRs. 35,000.00\nPaid to\nSahaj Web Agency\nFrom\nRamesh Traders\nUPI Ref No\n408219381920\n"
+    assert t._extract_counterparty(text, {}) == "Ramesh Traders"
+    assert t._extract_counterparty("Paid to: Kavya Stores\nFrom: Sahaj Web Agency", {}) == "Sahaj Web Agency"
+    assert t._extract_counterparty("Rahul: received from Meena via UPI", {}) == "Meena"
+
+
+def test_claim_with_a_known_utr_is_never_paired_with_another_line(client):
+    bank = (
+        b"Date,Narration,Ref No,Withdrawal,Deposit,Balance\n"
+        b"06/11/2026,NEFT/UTIB2026110600871/SUNRISE ENTERPRISES,UTIB2026110600871,25000.00,,230000.00\n"
+        b"08/11/2026,UPI/408219612345/KAVYA STORES,408219612345,,18000.00,248000.00\n"
+    )
+    data = _post(
+        client,
+        ("bank.csv", bank, "text/csv"),
+        ("a.txt", b"Kavya Stores: paid Rs 18,000 via UPI, ref 408219612345", "text/plain"),
+        ("b.txt", b"Kavya Stores: paid Rs 25,000 via UPI, ref 408219612345", "text/plain"),
+    )
+    assert data["status"] == "CONTRADICTED"
+    assert "UTIB2026110600871" not in data["truth_report"]["summary"]

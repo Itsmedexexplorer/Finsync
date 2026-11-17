@@ -137,6 +137,9 @@ class ContradictionDetector:
         # 3. Direct Pairwise Evaluation for Unmatched/Standalone Pairs
         # -------------------------------------------------------------
         if not match_relationships:
+            bank_refs = {
+                ContradictionRuleEngine._normalize_ref(t.bank_reference or "") for t in transactions
+            } - {""}
             for c in claims:
                 c_ent = entity_map.get(c.id)
                 for t in transactions:
@@ -160,9 +163,12 @@ class ContradictionDetector:
                         disc_amt = ContradictionRuleEngine.check_amount_discrepancy(c, t, config=self.config)
                         if disc_amt:
                             discrepancies.append(disc_amt)
-                        disc_ref = ContradictionRuleEngine.check_reference_discrepancy(_bank_comparable_ref(c), t.bank_reference, [c.evidence_id] + t.evidence_ids, [c.id], [t.id])
-                        if disc_ref:
-                            discrepancies.append(disc_ref)
+                        # A claim whose own reference is in the statement belongs to that line,
+                        # so another line's reference is not a conflict.
+                        if c_ref not in bank_refs:
+                            disc_ref = ContradictionRuleEngine.check_reference_discrepancy(_bank_comparable_ref(c), t.bank_reference, [c.evidence_id] + t.evidence_ids, [c.id], [t.id])
+                            if disc_ref:
+                                discrepancies.append(disc_ref)
                         disc_date = ContradictionRuleEngine.check_date_discrepancy(c.claimed_date, t.known_timestamp, [c.evidence_id] + t.evidence_ids, [c.id], [t.id], self.config)
                         if disc_date:
                             discrepancies.append(disc_date)
